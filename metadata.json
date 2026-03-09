@@ -1,0 +1,5 @@
+{
+  "name": "PingProPrivate",
+  "description": "A private mobile app for table tennis players to track casual matches, participate in weekly ranked tournaments, and view their stats and match history.",
+  "requestFramePermissions": []
+}

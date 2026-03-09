@@ -1,0 +1,13 @@
+﻿@import "tailwindcss";
+
+@theme {
+  --font-sans: "Avenir Next", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  @apply bg-zinc-950 text-zinc-100;
+}
+
+html.light body {
+  @apply bg-zinc-50 text-zinc-900;
+}
