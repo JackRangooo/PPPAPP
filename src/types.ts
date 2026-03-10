@@ -8,7 +8,14 @@ export type MatchStatus =
   | 'declined'
   | 'cancelled';
 export type MatchType = 'casual' | 'ranked';
-export type TournamentStatus = 'registration' | 'ongoing' | 'completed';
+export type TournamentStatus = 'registration' | 'ongoing' | 'completed' | 'cancelled';
+export type TournamentStage = 'quarterfinal' | 'semifinal' | 'third_place' | 'final';
+export type TournamentMatchStatus =
+  | 'waiting'
+  | 'ready'
+  | 'waiting_confirmation'
+  | 'completed'
+  | 'walkover';
 
 export interface AppSession {
   token: string;
@@ -54,6 +61,7 @@ export interface UserProfile {
   selectedTitle: string | null;
   theme: Theme;
   language: Language;
+  isRoot: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +85,55 @@ export interface Match {
   updatedAt: string;
 }
 
+export interface TournamentBracketMatch {
+  id: string;
+  stage: TournamentStage;
+  round: number;
+  slot: number;
+  label: string;
+  bestOf: number;
+  status: TournamentMatchStatus;
+  player1Id: string | null;
+  player1Name: string;
+  player1AvatarUrl: string;
+  player1Source: string | null;
+  player2Id: string | null;
+  player2Name: string;
+  player2AvatarUrl: string;
+  player2Source: string | null;
+  player1Score: number | null;
+  player2Score: number | null;
+  player1Confirmed: boolean;
+  player2Confirmed: boolean;
+  winnerId: string | null;
+  resolution: 'normal' | 'walkover' | null;
+  nextMatchId: string | null;
+  nextSlot: 1 | 2 | null;
+  loserNextMatchId: string | null;
+  loserNextSlot: 1 | 2 | null;
+}
+
+export interface TournamentBracket {
+  size: number;
+  matches: TournamentBracketMatch[];
+}
+
+export interface TournamentTimelineEvent {
+  id: string;
+  type:
+    | 'registration_opened'
+    | 'tournament_started'
+    | 'match_completed'
+    | 'walkover'
+    | 'tournament_cancelled'
+    | 'tournament_completed';
+  title: string;
+  description: string;
+  createdAt: string;
+  tournamentId: string;
+  matchId: string | null;
+}
+
 export interface Tournament {
   id: string;
   name: string;
@@ -85,8 +142,25 @@ export interface Tournament {
   endDate: string;
   participants: string[];
   winnerId: string | null;
+  runnerUpId: string | null;
+  thirdPlaceId: string | null;
+  adminUserId: string | null;
+  format: string;
+  bracket: TournamentBracket;
+  timeline: TournamentTimelineEvent[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TournamentMatchComment {
+  id: string;
+  tournamentId: string;
+  matchId: string;
+  userId: string;
+  authorName: string;
+  authorAvatarUrl: string;
+  body: string;
+  createdAt: string;
 }
 
 export interface SubmitMatchScoreResult {

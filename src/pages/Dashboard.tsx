@@ -1,15 +1,15 @@
 ﻿import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, ArrowRight, Search, Star, Swords, Trophy, User, X } from 'lucide-react';
+import { Activity, ArrowRight, Radio, Search, Star, Swords, Trophy, User, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import ActivityHeatmap from '../components/ActivityHeatmap';
-import { listUserRecentMatches, searchProfiles } from '../lib/api';
+import { listTournaments, listUserRecentMatches, searchProfiles } from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
-import type { Match, UserProfile } from '../types';
+import type { Match, TournamentTimelineEvent, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
 const ACTIVITY_MATCH_LIMIT = 1000;
@@ -19,6 +19,7 @@ export default function Dashboard() {
   const t = useTranslation(language);
   const navigate = useNavigate();
   const [activityMatches, setActivityMatches] = useState<Match[]>([]);
+  const [feedEvents, setFeedEvents] = useState<TournamentTimelineEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -64,20 +65,48 @@ export default function Dashboard() {
     return () => window.clearTimeout(timeoutId);
   }, [searchQuery, userProfile]);
 
+  useEffect(() => {
+    if (!userProfile) return;
+
+    const loadFeed = async () => {
+      try {
+        const tournaments = await listTournaments();
+        const nextEvents = tournaments
+          .flatMap((tournament) => tournament.timeline)
+          .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+          .slice(0, 8);
+        setFeedEvents(nextEvents);
+      } catch (error) {
+        console.error('Failed to load tournament feed', error);
+      }
+    };
+
+    void loadFeed();
+    return subscribeToTable('tournaments', () => {
+      void loadFeed();
+    });
+  }, [userProfile]);
+
   if (!userProfile) return null;
 
   const recentMatches = activityMatches.slice(0, 8);
+  const displayName = (userProfile.displayName || userProfile.nickname || 'Player').trim();
+  const firstName = displayName ? displayName.split(/\s+/)[0] : 'Player';
   const winRate =
     userProfile.casualWins + userProfile.casualLosses > 0
       ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
       : 0;
+
+  const feedTitle = language === 'zh' ? '赛事动态' : 'Tournament Feed';
+  const feedEmpty = language === 'zh' ? '开赛、晋级和夺冠动态会显示在这里。' : 'Bracket starts, advances, and title wins will show up here.';
+  const liveFeed = feedEvents.slice(0, 6);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className={clsx('text-3xl font-bold tracking-tight mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            {t('dashboard.welcome')}, {userProfile.displayName.split(' ')[0]}
+            {t('dashboard.welcome')}, {firstName}
           </h1>
           <p className="text-zinc-400 font-medium">{t('dashboard.readyForNextMatch')}</p>
         </div>
@@ -221,6 +250,46 @@ export default function Dashboard() {
 
       <ActivityHeatmap matches={activityMatches} theme={theme} language={language} />
 
+
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+            <Radio className="w-5 h-5 text-sky-500" /> {feedTitle}
+          </h2>
+        </div>
+
+        {liveFeed.length === 0 ? (
+          <div className={clsx('border rounded-2xl p-8 text-center', theme === 'dark' ? 'bg-zinc-900/30 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
+            <p className="text-zinc-500 font-medium">{feedEmpty}</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {liveFeed.map((event) => (
+              <div
+                key={event.id}
+                className={clsx(
+                  'border rounded-2xl p-4 transition-colors',
+                  theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm',
+                )}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className={clsx('font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                      {event.title}
+                    </div>
+                    <div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
+                      {event.description}
+                    </div>
+                  </div>
+                  <div className="text-xs font-medium text-zinc-500 shrink-0">
+                    {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
@@ -299,3 +368,5 @@ export default function Dashboard() {
     </motion.div>
   );
 }
+
+

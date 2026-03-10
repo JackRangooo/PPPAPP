@@ -1,10 +1,11 @@
-﻿import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { KeyRound, LogIn, UserRound } from 'lucide-react';
 import { motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import { getReadableErrorMessage } from '../lib/api';
 import Logo from '../components/Logo';
 import { useTranslation } from '../i18n';
 
@@ -73,7 +74,12 @@ export default function Login() {
       }
     } catch (submitError) {
       console.error('Authentication failed', submitError);
-      setError(mode === 'login' ? t('login.loginFailed') : t('login.registerFailed'));
+      setError(
+        getReadableErrorMessage(
+          submitError,
+          mode === 'login' ? t('login.loginFailed') : t('login.registerFailed'),
+        ),
+      );
     }
   };
 

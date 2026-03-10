@@ -51,6 +51,8 @@ export const translations = {
       activityEmpty: 'No activity yet. Finish a few matches and your graph will start filling in.',
       activityLegendLess: 'Less',
       activityLegendMore: 'More',
+      activityToday: 'Today',
+      activityRecentWeek: 'Last 7 days',
       activityTooltipNone: 'No activity on {date}',
       activityTooltipSome: '{count} activities on {date}',
     },
@@ -213,6 +215,8 @@ export const translations = {
       activityEmpty: '暂时还没有活动记录，先打几场比赛，热力图就会慢慢亮起来。',
       activityLegendLess: '少',
       activityLegendMore: '多',
+      activityToday: '今天',
+      activityRecentWeek: '近 7 天',
       activityTooltipNone: '{date} 没有活动',
       activityTooltipSome: '{date} 有 {count} 次活动',
     },
@@ -354,5 +358,6 @@ export const useTranslation = (lang: Language) => {
     }, value);
   };
 };
+
 
 

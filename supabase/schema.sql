@@ -1,4 +1,4 @@
-create extension if not exists pgcrypto;
+﻿create extension if not exists pgcrypto;
 
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
@@ -23,6 +23,7 @@ create table if not exists public.profiles (
   selected_title text not null default 'Novice Player',
   theme text not null default 'dark' check (theme in ('dark', 'light')),
   language text not null default 'en' check (language in ('en', 'zh')),
+  is_root boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
@@ -69,6 +70,7 @@ alter table public.profiles add column if not exists showcase jsonb not null def
 alter table public.profiles add column if not exists selected_title text not null default 'Novice Player';
 alter table public.profiles add column if not exists theme text not null default 'dark';
 alter table public.profiles add column if not exists language text not null default 'en';
+alter table public.profiles add column if not exists is_root boolean not null default false;
 alter table public.profiles add column if not exists created_at timestamptz not null default timezone('utc', now());
 alter table public.profiles add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
@@ -99,6 +101,26 @@ where theme not in ('dark', 'light') or theme is null;
 update public.profiles
 set language = 'en'
 where language not in ('en', 'zh') or language is null;
+
+update public.profiles
+set is_root = false
+where is_root is null;
+
+do $$
+begin
+  if exists (select 1 from public.profiles)
+     and not exists (select 1 from public.profiles where is_root) then
+    update public.profiles
+    set is_root = true
+    where id = (
+      select id
+      from public.profiles
+      order by created_at asc, id asc
+      limit 1
+    );
+  end if;
+end;
+$$;
 
 alter table public.profiles alter column nickname set not null;
 
@@ -135,6 +157,42 @@ create table if not exists public.tournaments (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.tournaments drop constraint if exists tournaments_status_check;
+alter table public.tournaments
+  add constraint tournaments_status_check
+  check (status in ('registration', 'ongoing', 'completed', 'cancelled'));
+alter table public.tournaments add column if not exists runner_up_id uuid references public.profiles (id) on delete set null;
+alter table public.tournaments add column if not exists third_place_id uuid references public.profiles (id) on delete set null;
+alter table public.tournaments add column if not exists admin_user_id uuid references public.profiles (id) on delete set null;
+alter table public.tournaments add column if not exists format text not null default 'single_elimination_third';
+alter table public.tournaments add column if not exists bracket jsonb not null default '{"size":0,"matches":[]}'::jsonb;
+alter table public.tournaments add column if not exists timeline jsonb not null default '[]'::jsonb;
+
+update public.tournaments
+set format = 'single_elimination_third'
+where format is null or btrim(format) = '';
+
+update public.tournaments
+set bracket = '{"size":0,"matches":[]}'::jsonb
+where bracket is null;
+
+update public.tournaments
+set timeline = '[]'::jsonb
+where timeline is null;
+
+create table if not exists public.tournament_match_comments (
+  id uuid primary key default gen_random_uuid(),
+  tournament_id uuid not null references public.tournaments (id) on delete cascade,
+  match_id uuid not null,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  body text not null,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists tournament_match_comments_tournament_idx
+  on public.tournament_match_comments (tournament_id, created_at desc);
+create index if not exists tournament_match_comments_match_idx
+  on public.tournament_match_comments (match_id, created_at asc);
 create table if not exists public.app_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
@@ -225,8 +283,9 @@ returns text
 language sql
 immutable
 strict
+set search_path = public, extensions
 as $$
-  select encode(digest(p_token, 'sha256'), 'hex');
+  select encode(extensions.digest(p_token, 'sha256'), 'hex');
 $$;
 create or replace function public.get_session_record(
   p_session_token text,
@@ -283,6 +342,7 @@ as $$
 declare
   v_session public.app_sessions;
   v_profile public.profiles;
+  v_should_be_root boolean;
 begin
   v_session := public.get_session_record(p_session_token, p_touch);
 
@@ -303,10 +363,10 @@ create or replace function public.issue_auth_payload(p_profile public.profiles)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
-  v_raw_token text := encode(gen_random_bytes(32), 'hex');
+  v_raw_token text := encode(extensions.gen_random_bytes(32), 'hex');
   v_session public.app_sessions;
 begin
   insert into public.app_sessions (user_id, token_hash, expires_at)
@@ -338,11 +398,12 @@ create or replace function public.register_with_password(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_nickname text := btrim(coalesce(p_nickname, ''));
   v_profile public.profiles;
+  v_should_be_root boolean;
 begin
   if char_length(v_nickname) < 3 then
     raise exception 'Nickname must be at least 3 characters.';
@@ -364,19 +425,27 @@ begin
     raise exception 'This nickname is already taken.';
   end if;
 
+  select not exists (
+    select 1
+    from public.profiles
+    where is_root
+  ) into v_should_be_root;
+
   insert into public.profiles (
     nickname,
     password_hash,
     email,
     display_name,
-    avatar_url
+    avatar_url,
+    is_root
   )
   values (
     v_nickname,
-    crypt(p_password, gen_salt('bf')),
+    extensions.crypt(p_password, extensions.gen_salt('bf')),
     '',
     v_nickname,
-    ''
+    '',
+    v_should_be_root
   )
   returning * into v_profile;
 
@@ -391,11 +460,12 @@ create or replace function public.login_with_password(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_nickname text := btrim(coalesce(p_nickname, ''));
   v_profile public.profiles;
+  v_should_be_root boolean;
 begin
   select *
   into v_profile
@@ -407,7 +477,7 @@ begin
     raise exception 'Nickname or password is incorrect.';
   end if;
 
-  if crypt(coalesce(p_password, ''), v_profile.password_hash) <> v_profile.password_hash then
+  if extensions.crypt(coalesce(p_password, ''), v_profile.password_hash) <> v_profile.password_hash then
     raise exception 'Nickname or password is incorrect.';
   end if;
 
@@ -426,6 +496,7 @@ as $$
 declare
   v_session public.app_sessions;
   v_profile public.profiles;
+  v_should_be_root boolean;
 begin
   begin
     v_session := public.get_session_record(p_session_token, true);
@@ -500,6 +571,7 @@ set search_path = public
 as $$
 declare
   v_profile public.profiles;
+  v_should_be_root boolean;
 begin
   perform public.current_profile_from_session(p_session_token, false);
 
@@ -530,6 +602,7 @@ set search_path = public
 as $$
 declare
   v_profile public.profiles;
+  v_should_be_root boolean;
 begin
   v_profile := public.current_profile_from_session(p_session_token, false);
 
@@ -609,6 +682,7 @@ declare
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
 
+
   return query
   select *
   from public.profiles
@@ -633,6 +707,7 @@ declare
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
 
+
   return query
   select *
   from public.profiles
@@ -654,6 +729,7 @@ declare
   v_limit integer := greatest(1, least(coalesce(p_limit, 8), 1000));
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
+
 
   return query
   select *
@@ -677,6 +753,7 @@ declare
   v_requester public.profiles;
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
+
 
   return query
   select *
@@ -702,6 +779,7 @@ declare
   v_match public.matches;
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
+
 
   select *
   into v_match
@@ -812,6 +890,7 @@ declare
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
 
+
   select *
   into v_match
   from public.matches
@@ -875,6 +954,7 @@ declare
   v_loser_id uuid;
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
+
 
   select *
   into v_match
@@ -991,6 +1071,7 @@ declare
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
 
+
   return query
   select *
   from public.tournaments
@@ -1019,6 +1100,7 @@ declare
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
 
+
   select *
   into v_tournament
   from public.tournaments
@@ -1037,6 +1119,10 @@ begin
     return v_tournament;
   end if;
 
+  if coalesce(array_length(v_tournament.participants, 1), 0) >= 8 then
+    raise exception 'This tournament is already full.';
+  end if;
+
   update public.tournaments
   set participants = array_append(v_tournament.participants, v_requester.id)
   where id = p_tournament_id
@@ -1053,7 +1139,7 @@ create or replace function public.end_tournament(
 returns public.tournaments
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_requester public.profiles;
@@ -1063,8 +1149,18 @@ declare
   v_participant uuid;
   v_rank integer;
   v_trophy jsonb;
+  v_points integer;
+  v_participation_points integer := 10;
+  v_champion_bonus integer := 90;
+  v_runner_up_bonus integer := 50;
+  v_third_place_bonus integer := 30;
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can end a tournament.';
+  end if;
+
 
   select *
   into v_tournament
@@ -1095,14 +1191,21 @@ begin
     update public.profiles
     set
       tournaments_played = tournaments_played + 1,
+      ranked_points = ranked_points + v_participation_points,
       inventory = public.append_title(inventory, 'Tournament Participant')
     where id = v_participant;
   end loop;
 
   for v_rank in 1..least(3, coalesce(array_length(v_shuffled, 1), 0))
   loop
+    v_points := case
+      when v_rank = 1 then v_champion_bonus
+      when v_rank = 2 then v_runner_up_bonus
+      else v_third_place_bonus
+    end;
+
     v_trophy := jsonb_build_object(
-      'id', gen_random_uuid()::text,
+      'id', extensions.gen_random_uuid()::text,
       'name', case
         when v_rank = 1 then 'Gold Cup'
         when v_rank = 2 then 'Silver Cup'
@@ -1114,7 +1217,9 @@ begin
     );
 
     update public.profiles
-    set inventory = public.append_trophy(inventory, v_trophy)
+    set
+      ranked_points = ranked_points + v_points,
+      inventory = public.append_trophy(inventory, v_trophy)
     where id = v_shuffled[v_rank];
   end loop;
 
@@ -1155,6 +1260,436 @@ drop policy if exists "Users can update their own profile" on public.profiles;
 drop policy if exists "Participants can read matches" on public.matches;
 drop policy if exists "Authenticated users can read tournaments" on public.tournaments;
 
+create or replace function public.get_tournament_bracket_match(
+  p_bracket jsonb,
+  p_match_id uuid
+)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select value
+  from jsonb_array_elements(coalesce(p_bracket -> 'matches', '[]'::jsonb)) as value
+  where value ->> 'id' = p_match_id::text
+  limit 1;
+$$;
+
+create or replace function public.append_tournament_event(
+  p_existing_timeline jsonb,
+  p_event jsonb
+)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select coalesce(p_existing_timeline, '[]'::jsonb) || jsonb_build_array(p_event);
+$$;
+
+create or replace function public.create_tournament(
+  p_session_token text,
+  p_name text default null
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_tournament_id uuid := extensions.gen_random_uuid();
+  v_name text := coalesce(nullif(btrim(coalesce(p_name, '')), ''), 'Weekly Championship');
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can create a tournament.';
+  end if;
+
+  if exists (
+    select 1
+    from public.tournaments
+    where status in ('registration', 'ongoing')
+  ) then
+    raise exception 'Finish or cancel the active tournament before creating a new one.';
+  end if;
+
+  insert into public.tournaments (
+    id,
+    name,
+    status,
+    start_date,
+    end_date,
+    admin_user_id,
+    format,
+    bracket,
+    timeline
+  )
+  values (
+    v_tournament_id,
+    v_name,
+    'registration',
+    timezone('utc', now()),
+    timezone('utc', now()) + interval '7 days',
+    v_requester.id,
+    'single_elimination_third',
+    '{"size":0,"matches":[]}'::jsonb,
+    public.append_tournament_event(
+      '[]'::jsonb,
+      jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'type', 'registration_opened',
+        'title', v_name || ' registration is open',
+        'description', 'Players can join the bracket now.',
+        'createdAt', timezone('utc', now()),
+        'tournamentId', v_tournament_id,
+        'matchId', null
+      )
+    )
+  )
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
+
+create or replace function public.start_tournament(
+  p_session_token text,
+  p_tournament_id uuid,
+  p_bracket jsonb,
+  p_timeline jsonb
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can start a tournament.';
+  end if;
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id
+  for update;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  if v_tournament.status <> 'registration' then
+    raise exception 'Only tournaments in registration can be started.';
+  end if;
+
+  if coalesce(array_length(v_tournament.participants, 1), 0) < 4 then
+    raise exception 'At least 4 players are required to start a tournament.';
+  end if;
+
+  if jsonb_typeof(coalesce(p_bracket, '{}'::jsonb)) <> 'object' then
+    raise exception 'A valid bracket payload is required.';
+  end if;
+
+  if jsonb_typeof(coalesce(p_timeline, '[]'::jsonb)) <> 'array' then
+    raise exception 'A valid tournament timeline is required.';
+  end if;
+
+  update public.tournaments
+  set
+    status = 'ongoing',
+    admin_user_id = v_requester.id,
+    format = 'single_elimination_third',
+    bracket = coalesce(p_bracket, bracket),
+    timeline = coalesce(p_timeline, timeline)
+  where id = p_tournament_id
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
+
+create or replace function public.save_tournament_progress(
+  p_session_token text,
+  p_tournament_id uuid,
+  p_match_id uuid,
+  p_bracket jsonb,
+  p_timeline jsonb,
+  p_status text,
+  p_winner_id uuid default null,
+  p_runner_up_id uuid default null,
+  p_third_place_id uuid default null
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_match jsonb;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id
+  for update;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  v_match := public.get_tournament_bracket_match(v_tournament.bracket, p_match_id);
+
+  if v_match is null then
+    raise exception 'Tournament match not found.';
+  end if;
+
+  if not coalesce(v_requester.is_root, false)
+     and coalesce(v_match ->> 'player1Id', '') <> v_requester.id::text
+     and coalesce(v_match ->> 'player2Id', '') <> v_requester.id::text then
+    raise exception 'You are not allowed to update this tournament match.';
+  end if;
+
+  if p_status not in ('ongoing', 'completed') then
+    raise exception 'Unsupported tournament status update.';
+  end if;
+
+  if jsonb_typeof(coalesce(p_bracket, '{}'::jsonb)) <> 'object' then
+    raise exception 'A valid bracket payload is required.';
+  end if;
+
+  if jsonb_typeof(coalesce(p_timeline, '[]'::jsonb)) <> 'array' then
+    raise exception 'A valid tournament timeline is required.';
+  end if;
+
+  update public.tournaments
+  set
+    status = p_status,
+    bracket = p_bracket,
+    timeline = p_timeline,
+    winner_id = case when p_status = 'completed' then p_winner_id else winner_id end,
+    runner_up_id = case when p_status = 'completed' then p_runner_up_id else runner_up_id end,
+    third_place_id = case when p_status = 'completed' then p_third_place_id else third_place_id end
+  where id = p_tournament_id
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
+
+create or replace function public.cancel_tournament(
+  p_session_token text,
+  p_tournament_id uuid
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can cancel a tournament.';
+  end if;
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id
+  for update;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  if v_tournament.status in ('completed', 'cancelled') then
+    return v_tournament;
+  end if;
+
+  update public.tournaments
+  set
+    status = 'cancelled',
+    timeline = public.append_tournament_event(
+      timeline,
+      jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'type', 'tournament_cancelled',
+        'title', v_tournament.name || ' was cancelled',
+        'description', 'The root admin closed this event before it finished.',
+        'createdAt', timezone('utc', now()),
+        'tournamentId', v_tournament.id,
+        'matchId', null
+      )
+    )
+  where id = p_tournament_id
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
+
+create or replace function public.list_tournament_match_comments(
+  p_session_token text,
+  p_tournament_id uuid,
+  p_match_id uuid
+)
+returns table (
+  id uuid,
+  tournament_id uuid,
+  match_id uuid,
+  user_id uuid,
+  author_name text,
+  author_avatar_url text,
+  body text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_match jsonb;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id;
+
+  if v_tournament.id is null then
+    return;
+  end if;
+
+  v_match := public.get_tournament_bracket_match(v_tournament.bracket, p_match_id);
+
+  if v_match is null then
+    return;
+  end if;
+
+  if coalesce(v_match ->> 'status', '') not in ('completed', 'walkover') then
+    return;
+  end if;
+
+  return query
+  select
+    c.id,
+    c.tournament_id,
+    c.match_id,
+    c.user_id,
+    p.display_name as author_name,
+    p.avatar_url as author_avatar_url,
+    c.body,
+    c.created_at
+  from public.tournament_match_comments c
+  join public.profiles p on p.id = c.user_id
+  where c.tournament_id = p_tournament_id
+    and c.match_id = p_match_id
+  order by c.created_at asc;
+end;
+$$;
+
+create or replace function public.create_tournament_match_comment(
+  p_session_token text,
+  p_tournament_id uuid,
+  p_match_id uuid,
+  p_body text
+)
+returns table (
+  id uuid,
+  tournament_id uuid,
+  match_id uuid,
+  user_id uuid,
+  author_name text,
+  author_avatar_url text,
+  body text,
+  created_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_match jsonb;
+  v_comment_id uuid;
+  v_body text := btrim(coalesce(p_body, ''));
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if char_length(v_body) = 0 then
+    raise exception 'Comment cannot be empty.';
+  end if;
+
+  if char_length(v_body) > 400 then
+    raise exception 'Comment is too long.';
+  end if;
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  v_match := public.get_tournament_bracket_match(v_tournament.bracket, p_match_id);
+
+  if v_match is null then
+    raise exception 'Tournament match not found.';
+  end if;
+
+  if coalesce(v_match ->> 'status', '') not in ('completed', 'walkover') then
+    raise exception 'Comments open after the match is finished.';
+  end if;
+
+  insert into public.tournament_match_comments (
+    tournament_id,
+    match_id,
+    user_id,
+    body
+  )
+  values (
+    p_tournament_id,
+    p_match_id,
+    v_requester.id,
+    v_body
+  )
+  returning id into v_comment_id;
+
+  return query
+  select
+    c.id,
+    c.tournament_id,
+    c.match_id,
+    c.user_id,
+    v_requester.display_name as author_name,
+    v_requester.avatar_url as author_avatar_url,
+    c.body,
+    c.created_at
+  from public.tournament_match_comments c
+  where c.id = v_comment_id;
+end;
+$$;
 grant execute on function public.register_with_password(text, text) to anon, authenticated;
 grant execute on function public.login_with_password(text, text) to anon, authenticated;
 grant execute on function public.restore_password_session(text) to anon, authenticated;
@@ -1174,6 +1709,12 @@ grant execute on function public.submit_match_score(text, uuid, integer, integer
 grant execute on function public.list_tournaments_for_user(text) to anon, authenticated;
 grant execute on function public.register_for_tournament(text, uuid) to anon, authenticated;
 grant execute on function public.end_tournament(text, uuid) to anon, authenticated;
+grant execute on function public.create_tournament(text, text) to anon, authenticated;
+grant execute on function public.start_tournament(text, uuid, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.save_tournament_progress(text, uuid, uuid, jsonb, jsonb, text, uuid, uuid, uuid) to anon, authenticated;
+grant execute on function public.cancel_tournament(text, uuid) to anon, authenticated;
+grant execute on function public.list_tournament_match_comments(text, uuid, uuid) to anon, authenticated;
+grant execute on function public.create_tournament_match_comment(text, uuid, uuid, text) to anon, authenticated;
 
 insert into public.tournaments (name, status, start_date, end_date)
 select
@@ -1186,6 +1727,8 @@ where not exists (
   from public.tournaments
   where status in ('registration', 'ongoing')
 );
+
+
 
 
 

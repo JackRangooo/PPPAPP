@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Activity,
   Check as CheckIcon,
@@ -17,6 +17,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import TrophyBadge from '../components/TrophyBadge';
 import { updateProfileDisplayName, updateProfilePreferences } from '../lib/api';
 import type { Trophy as TrophyType } from '../types';
 import { useTranslation } from '../i18n';
@@ -186,7 +187,7 @@ export default function Profile() {
                   key={slot.slotId}
                   onClick={() => (trophy ? setSelectedTrophy(trophy) : setIsInventoryOpen(true))}
                   className={clsx(
-                    'aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all cursor-pointer group',
+                    'aspect-square rounded-2xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all cursor-pointer group',
                     trophy
                       ? theme === 'dark'
                         ? 'bg-zinc-950/50 border-amber-500/30 hover:border-amber-500/60'
@@ -197,16 +198,8 @@ export default function Profile() {
                   )}
                 >
                   {trophy ? (
-                    <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center">
-                      <Trophy
-                        className={clsx(
-                          'w-10 h-10 mb-1 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]',
-                          trophy.rank === 1 ? 'text-yellow-400' : trophy.rank === 2 ? 'text-zinc-300' : 'text-amber-600',
-                        )}
-                      />
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter text-center px-1 truncate w-full">
-                        {trophy.name}
-                      </span>
+                    <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="h-full w-full p-2">
+                      <TrophyBadge trophy={trophy} theme={theme} language={language} />
                     </motion.div>
                   ) : (
                     <div className="text-zinc-700 group-hover:text-zinc-500 transition-colors">

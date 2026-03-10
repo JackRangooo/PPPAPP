@@ -4,6 +4,7 @@ import { Loader2, ShieldAlert } from 'lucide-react';
 import clsx from 'clsx';
 
 import Navigation from './components/Navigation';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
 import SplashScreen from './components/SplashScreen';
 import Dashboard from './pages/Dashboard';
 import Leaderboard from './pages/Leaderboard';
@@ -268,7 +269,7 @@ const MissingProfileState = () => {
         </h1>
         <p className={clsx('text-sm font-medium mb-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
           {language === 'zh'
-            ? '我们没能恢复你的资料。请重新登录一次，系统会重新同步账号数据。'
+            ? '我们暂时无法恢复你的玩家资料。请先退出登录，再重新登录以重新同步账号。'
             : 'We could not restore your player profile. Sign out once and sign back in to resync your account.'}
         </p>
         <button
@@ -277,7 +278,7 @@ const MissingProfileState = () => {
           }}
           className="w-full rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 font-bold transition-colors"
         >
-          {language === 'zh' ? '返回登录页' : 'Back to sign in'}
+          {language === 'zh' ? '返回登录' : 'Back to sign in'}
         </button>
       </div>
     </div>
@@ -324,8 +325,80 @@ const Layout = () => {
   );
 };
 
+const RouteRecoveryScreen = ({
+  theme,
+  hasUser,
+  errorMessage,
+  onRetry,
+}: {
+  theme: Theme;
+  hasUser: boolean;
+  errorMessage: string;
+  onRetry: () => void;
+}) => {
+  const description =
+    errorMessage.trim() ||
+    'The app ran into a rendering issue. You can retry, or go back to the main screen.';
+
+  return (
+    <div
+      className={clsx(
+        'min-h-screen flex items-center justify-center p-6 transition-colors duration-300',
+        theme === 'dark' ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900',
+      )}
+    >
+      <div
+        className={clsx(
+          'max-w-lg w-full rounded-[2rem] border p-8',
+          theme === 'dark' ? 'bg-zinc-900/70 border-white/10' : 'bg-white border-zinc-200 shadow-sm',
+        )}
+      >
+        <div className="w-14 h-14 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mb-5">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <h1 className={clsx('text-2xl font-bold mb-3', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+          This page hit an error
+        </h1>
+        <p className={clsx('text-sm font-medium mb-6 whitespace-pre-wrap', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+          {description}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => {
+              onRetry();
+              window.location.reload();
+            }}
+            className="flex-1 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 font-bold transition-colors"
+          >
+            Reload
+          </button>
+          <button
+            onClick={() => {
+              onRetry();
+              window.location.assign(hasUser ? '/' : '/login');
+            }}
+            className={clsx(
+              'flex-1 rounded-2xl py-4 font-bold transition-colors border',
+              theme === 'dark'
+                ? 'bg-zinc-950 border-white/10 text-white hover:bg-zinc-900'
+                : 'bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50',
+            )}
+          >
+            {hasUser ? 'Back Home' : 'Back to Sign In'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CatchAllRoute = () => {
+  const { user } = useAuth();
+  return <Navigate to={user ? '/' : '/login'} replace />;
+};
+
 const AppRoutes = () => {
-  const { booting, theme } = useAuth();
+  const { booting, theme, user } = useAuth();
 
   if (booting) {
     return <SplashScreen theme={theme} />;
@@ -333,19 +406,31 @@ const AppRoutes = () => {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/play" element={<Play />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/player/:uid" element={<PlayerProfile />} />
-            <Route path="/match/:id" element={<MatchDetails />} />
+      <RouteErrorBoundary
+        fallback={({ error, reset }) => (
+          <RouteRecoveryScreen
+            theme={theme}
+            hasUser={Boolean(user)}
+            errorMessage={error?.message ?? ''}
+            onRetry={reset}
+          />
+        )}
+      >
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/play" element={<Play />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/player/:uid" element={<PlayerProfile />} />
+              <Route path="/match/:id" element={<MatchDetails />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+          <Route path="*" element={<CatchAllRoute />} />
+        </Routes>
+      </RouteErrorBoundary>
     </BrowserRouter>
   );
 };

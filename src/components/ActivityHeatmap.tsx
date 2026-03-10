@@ -1,4 +1,5 @@
-﻿import { addDays, format, isAfter, isBefore, startOfDay, startOfWeek, subWeeks } from 'date-fns';
+﻿import { useEffect, useRef } from 'react';
+import { addDays, format, isAfter, isBefore, startOfDay, startOfWeek, subDays, subWeeks } from 'date-fns';
 import clsx from 'clsx';
 
 import type { Language, Match, Theme } from '../types';
@@ -15,7 +16,7 @@ type ActivityHeatmapProps = {
 };
 
 const formatTooltipDate = (date: Date, language: Language) =>
-  language === 'zh' ? format(date, 'yyyy年M月d日') : format(date, 'MMM d, yyyy');
+  language === 'zh' ? format(date, 'yyyy-MM-dd') : format(date, 'MMM d, yyyy');
 
 const getIntensityClassName = (count: number, theme: Theme, isFuture: boolean, isToday: boolean) => {
   if (isFuture) {
@@ -24,8 +25,8 @@ const getIntensityClassName = (count: number, theme: Theme, isFuture: boolean, i
 
   if (count <= 0) {
     return theme === 'dark'
-      ? clsx('bg-zinc-900 border-white/5', isToday && 'border-zinc-500')
-      : clsx('bg-zinc-200/80 border-zinc-100', isToday && 'border-zinc-400');
+      ? clsx('bg-zinc-900 border-white/5', isToday && 'border-zinc-400 ring-1 ring-zinc-400/30')
+      : clsx('bg-zinc-200/80 border-zinc-100', isToday && 'border-zinc-500 ring-1 ring-zinc-500/20');
   }
 
   if (count === 1) {
@@ -53,6 +54,7 @@ const getIntensityClassName = (count: number, theme: Theme, isFuture: boolean, i
 
 export default function ActivityHeatmap({ matches, theme, language }: ActivityHeatmapProps) {
   const t = useTranslation(language);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const today = startOfDay(new Date());
   const gridStart = startOfWeek(subWeeks(today, TOTAL_WEEKS - 1), { weekStartsOn: 1 });
   const todayKey = format(today, 'yyyy-MM-dd');
@@ -70,6 +72,11 @@ export default function ActivityHeatmap({ matches, theme, language }: ActivityHe
   }, {});
 
   const totalActivity = Object.values(activityCountByDate).reduce((sum, current) => sum + current, 0);
+  const todayActivity = activityCountByDate[todayKey] ?? 0;
+  const recentSevenDayActivity = Array.from({ length: 7 }, (_, index) => {
+    const key = format(subDays(today, index), 'yyyy-MM-dd');
+    return activityCountByDate[key] ?? 0;
+  }).reduce((sum, current) => sum + current, 0);
 
   const weeks = Array.from({ length: TOTAL_WEEKS }, (_, weekIndex) =>
     Array.from({ length: DAYS_IN_WEEK }, (_, dayIndex) => addDays(gridStart, weekIndex * DAYS_IN_WEEK + dayIndex)),
@@ -93,6 +100,25 @@ export default function ActivityHeatmap({ matches, theme, language }: ActivityHe
     return '';
   });
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const focusToday = () => {
+      container.scrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+    };
+
+    const frameId = window.requestAnimationFrame(focusToday);
+    window.addEventListener('resize', focusToday);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', focusToday);
+    };
+  }, [matches.length]);
+
   const legendSteps = [0, 1, 2, 3, 4];
 
   return (
@@ -102,7 +128,7 @@ export default function ActivityHeatmap({ matches, theme, language }: ActivityHe
         theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm',
       )}
     >
-      <div className="flex items-start justify-between gap-4 mb-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-5">
         <div>
           <h2 className={clsx('text-lg font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {t('dashboard.activityTitle')}
@@ -111,19 +137,44 @@ export default function ActivityHeatmap({ matches, theme, language }: ActivityHe
             {t('dashboard.activitySummary', { count: String(totalActivity) })}
           </p>
         </div>
-        <div
-          className={clsx(
-            'rounded-2xl px-4 py-2 text-sm font-bold',
-            theme === 'dark'
-              ? 'bg-zinc-950 text-zinc-300 border border-white/5'
-              : 'bg-zinc-100 text-zinc-700 border border-zinc-200',
-          )}
-        >
-          {today.getFullYear()}
+
+        <div className="flex items-center gap-2 self-start md:self-auto">
+          <div
+            className={clsx(
+              'rounded-2xl px-4 py-2 text-sm font-bold border',
+              theme === 'dark'
+                ? 'bg-zinc-950 text-zinc-300 border-white/5'
+                : 'bg-zinc-100 text-zinc-700 border-zinc-200',
+            )}
+          >
+            {today.getFullYear()}
+          </div>
+          <div
+            className={clsx(
+              'min-w-[84px] rounded-2xl border px-3 py-2',
+              theme === 'dark'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700',
+            )}
+          >
+            <div className="text-[10px] font-black uppercase tracking-[0.18em]">{t('dashboard.activityToday')}</div>
+            <div className="text-xl font-black leading-none mt-1">{todayActivity}</div>
+          </div>
+          <div
+            className={clsx(
+              'min-w-[84px] rounded-2xl border px-3 py-2',
+              theme === 'dark'
+                ? 'bg-amber-500/10 border-amber-500/20 text-amber-200'
+                : 'bg-amber-50 border-amber-200 text-amber-700',
+            )}
+          >
+            <div className="text-[10px] font-black uppercase tracking-[0.18em]">{t('dashboard.activityRecentWeek')}</div>
+            <div className="text-xl font-black leading-none mt-1">{recentSevenDayActivity}</div>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-2">
+      <div ref={scrollContainerRef} className="overflow-x-auto scroll-smooth pb-2">
         <div className="min-w-[760px]">
           <div className="flex gap-1 pl-12 mb-3">
             {monthLabels.map((label, index) => (

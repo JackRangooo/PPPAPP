@@ -1,10 +1,11 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Activity, ArrowLeft, Star, Trophy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import TrophyBadge from '../components/TrophyBadge';
 import { fetchPlayerProfile } from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
 import type { Trophy as TrophyType, UserProfile } from '../types';
@@ -105,7 +106,7 @@ export default function PlayerProfile() {
                   key={slot.slotId}
                   onClick={() => trophy && setSelectedTrophy(trophy)}
                   className={clsx(
-                    'aspect-square rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all',
+                    'aspect-square rounded-2xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all',
                     trophy
                       ? theme === 'dark'
                         ? 'bg-zinc-950/50 border-amber-500/30 cursor-pointer hover:border-amber-500/60'
@@ -116,16 +117,8 @@ export default function PlayerProfile() {
                   )}
                 >
                   {trophy ? (
-                    <div className="flex flex-col items-center">
-                      <Trophy
-                        className={clsx(
-                          'w-10 h-10 mb-1 drop-shadow-[0_0_8px_rgba(245,158,11,0.4)]',
-                          trophy.rank === 1 ? 'text-yellow-400' : trophy.rank === 2 ? 'text-zinc-300' : 'text-amber-600',
-                        )}
-                      />
-                      <span className={clsx('text-[10px] font-bold uppercase tracking-tighter text-center px-1 truncate w-full', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-600')}>
-                        {trophy.name}
-                      </span>
+                    <div className="h-full w-full p-2">
+                      <TrophyBadge trophy={trophy} theme={theme} language={language} />
                     </div>
                   ) : (
                     <Trophy className={clsx('w-8 h-8 opacity-5', theme === 'dark' ? 'text-zinc-700' : 'text-zinc-400')} />
