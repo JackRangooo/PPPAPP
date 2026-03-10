@@ -57,8 +57,7 @@ const createEvent = (
 
 const getRequiredWins = (bestOf: number) => Math.max(1, Math.ceil(bestOf / 2));
 
-const validateScore = (bestOf: number, player1Score: number, player2Score: number) => {
-  const requiredWins = getRequiredWins(bestOf);
+const validateScore = (_bestOf: number, player1Score: number, player2Score: number) => {
   if (player1Score === player2Score) {
     return false;
   }
@@ -67,9 +66,11 @@ const validateScore = (bestOf: number, player1Score: number, player2Score: numbe
     return false;
   }
 
-  const maxScore = Math.max(player1Score, player2Score);
-  const minScore = Math.min(player1Score, player2Score);
-  return maxScore === requiredWins && minScore >= 0 && minScore < requiredWins;
+  if (!Number.isInteger(player1Score) || !Number.isInteger(player2Score)) {
+    return false;
+  }
+
+  return true;
 };
 
 const cloneBracket = (bracket: TournamentBracket): TournamentBracket => ({
@@ -565,7 +566,7 @@ export const submitTournamentMatchScore = (
   const canonicalPlayer2Score = actorSlot === 1 ? opponentScore : myScore;
 
   if (!validateScore(match.bestOf, canonicalPlayer1Score, canonicalPlayer2Score)) {
-    throw new Error(match.bestOf === 1 ? 'Use a BO1 result like 1:0.' : 'Use a BO3 result like 2:0 or 2:1.');
+    throw new Error('Enter the final score for both players. Scores cannot be tied.');
   }
 
   const counterpartConfirmed = actorSlot === 1 ? match.player2Confirmed : match.player1Confirmed;

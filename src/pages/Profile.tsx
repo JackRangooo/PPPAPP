@@ -396,18 +396,24 @@ export default function Profile() {
         </button>
       </header>
 
-      <section className="relative">
-        <div className="flex items-center justify-between mb-4 gap-3">
-          <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            <Trophy className="w-5 h-5 text-amber-500" /> {t('profile.showcase')}
-          </h2>
-          <div className="flex items-center gap-2">
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+              <Trophy className="w-5 h-5 text-amber-500" /> {t('profile.showcase')}
+            </h2>
+            <p className={clsx('mt-1 text-sm', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+              {t('profile.trophyShowcase')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             <button
               onClick={() => {
                 setInventoryTab('shop');
                 setIsInventoryOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2 text-amber-500 font-black text-sm"
+              className={clsx('inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-colors', theme === 'dark' ? 'bg-amber-500/12 text-amber-400 hover:bg-amber-500/18' : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/15')}
             >
               <Coins className="w-4 h-4" />
               {userProfile.coins}
@@ -417,24 +423,27 @@ export default function Profile() {
                 setInventoryTab('trophies');
                 setIsInventoryOpen(true);
               }}
-              className="text-sm text-emerald-500 font-bold flex items-center gap-1 hover:text-emerald-400"
+              className={clsx('inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black transition-colors', theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/16' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/15')}
             >
-              <Package className="w-4 h-4" /> {t('profile.backpack')}
+              <Package className="w-4 h-4" />
+              {t('profile.backpack')}
             </button>
           </div>
         </div>
 
-        <TrophyShowcaseCabinet
-          language={language}
-          theme={theme}
-          slots={userProfile.showcase || []}
-          trophies={userProfile.inventory?.trophies || []}
-          onSelectTrophy={setSelectedTrophy}
-          onEmptySlotClick={() => setIsInventoryOpen(true)}
-        />
+        <div className={clsx('rounded-[2rem] border p-4', theme === 'dark' ? 'bg-zinc-900/40 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
+          <TrophyShowcaseCabinet
+            language={language}
+            theme={theme}
+            slots={userProfile.showcase || []}
+            trophies={userProfile.inventory?.trophies || []}
+            onSelectTrophy={setSelectedTrophy}
+            onEmptySlotClick={() => setIsInventoryOpen(true)}
+          />
+        </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
           <div className="flex items-center gap-2 text-emerald-500 mb-4">
             <Star className="w-4 h-4 fill-current" />

@@ -62,11 +62,7 @@ export default function TrophyShowcaseCabinet({
                 key={slot.slotId}
                 type="button"
                 disabled={!isInteractive}
-                onClick={
-                  trophy
-                    ? () => onSelectTrophy?.(trophy)
-                    : () => onEmptySlotClick?.()
-                }
+                onClick={trophy ? () => onSelectTrophy?.(trophy) : () => onEmptySlotClick?.()}
                 className={clsx(
                   'group relative aspect-square overflow-hidden rounded-2xl border-2 border-dashed transition-all',
                   theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white/80',
@@ -89,6 +85,7 @@ export default function TrophyShowcaseCabinet({
                         <PrizeIcon rank={trophy.rank} className="h-full w-full" />
                       </div>
                     )}
+
                     {displayMode === 'icon' ? (
                       <div
                         className={clsx(

@@ -88,8 +88,15 @@ export default function TournamentPodium({
     .filter((entry): entry is TournamentPodiumEntry => Boolean(entry));
 
   return (
-    <div className={clsx('rounded-[2rem] border p-5 sm:p-6', theme === 'dark' ? 'bg-zinc-900/60 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-      <div className="flex items-center gap-2 mb-5">
+    <div
+      className={clsx(
+        'rounded-[2rem] border p-5 sm:p-6',
+        theme === 'dark'
+          ? 'border-white/5 bg-zinc-900/60'
+          : 'border-zinc-200 bg-white shadow-sm',
+      )}
+    >
+      <div className="mb-5 flex items-center gap-2">
         <Trophy className="h-5 w-5 text-amber-500" />
         <h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
           {ui.title}
@@ -107,16 +114,22 @@ export default function TournamentPodium({
                 <img
                   src={entry.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(entry.name)}&background=random`}
                   alt={entry.name}
-                  className={clsx('h-20 w-20 rounded-full object-cover ring-4', meta.ring, theme === 'dark' ? 'border-4 border-zinc-900' : 'border-4 border-white')}
+                  className={clsx(
+                    'h-20 w-20 rounded-full object-cover ring-4',
+                    meta.ring,
+                    theme === 'dark' ? 'border-4 border-zinc-900' : 'border-4 border-white',
+                  )}
                   referrerPolicy="no-referrer"
                 />
                 <div className={clsx('absolute -top-4 left-1/2 -translate-x-1/2', meta.crown)}>
                   <Crown className="h-6 w-6 fill-current" />
                 </div>
               </div>
+
               <div className={clsx('mb-2 truncate text-sm font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                 {entry.name}
               </div>
+
               <div
                 className={clsx(
                   'relative flex items-center justify-center rounded-t-[1.5rem] bg-gradient-to-b px-3 pb-4 pt-5 text-center',
@@ -142,12 +155,13 @@ export default function TournamentPodium({
           <div className={clsx('text-xs font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
             {ui.others}
           </div>
+
           {standings.map((entry) => (
             <div
               key={entry.id}
               className={clsx(
                 'flex items-center justify-between gap-4 rounded-2xl border px-4 py-3',
-                theme === 'dark' ? 'bg-zinc-950/70 border-white/5' : 'bg-zinc-50 border-zinc-200',
+                theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50',
               )}
             >
               <div className="flex min-w-0 items-center gap-3">
@@ -169,6 +183,7 @@ export default function TournamentPodium({
                   </div>
                 </div>
               </div>
+
               <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-500">
                 {entry.matchesPlayed}
               </div>
