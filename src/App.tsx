@@ -4,6 +4,7 @@ import { Loader2, ShieldAlert } from 'lucide-react';
 import clsx from 'clsx';
 
 import Navigation from './components/Navigation';
+import GlobalMessageQueue from './components/GlobalMessageQueue';
 import RouteErrorBoundary from './components/RouteErrorBoundary';
 import SplashScreen from './components/SplashScreen';
 import Dashboard from './pages/Dashboard';
@@ -321,6 +322,7 @@ const Layout = () => {
       <main className="max-w-3xl mx-auto p-4 md:p-8">
         <Outlet />
       </main>
+      <GlobalMessageQueue />
     </div>
   );
 };

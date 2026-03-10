@@ -12,7 +12,7 @@ const stageHeadings = {
     semifinal: 'Semifinals',
     final: 'Grand Final',
     thirdPlace: 'Third Place Match',
-    feedHint: 'The losing semifinalists drop into this match.',
+    feedHint: 'The losing semifinalists play here.',
   },
   zh: {
     quarterfinal: {
@@ -58,10 +58,10 @@ const toneClasses: Record<string, string> = {
   zinc: 'border-white/10 bg-white/5 text-zinc-300',
 };
 
-const CARD_WIDTH = 206;
-const CARD_HEIGHT = 102;
-const COLUMN_GAP = 28;
-const ROW_GAP = 10;
+const CARD_WIDTH = 250;
+const CARD_HEIGHT = 142;
+const COLUMN_GAP = 42;
+const ROW_GAP = 16;
 const MAIN_ROW_COUNT = 8;
 
 const rowMap: Record<'quarterfinal' | 'semifinal' | 'final', Record<number, number>> = {
@@ -100,11 +100,10 @@ type PlayerIdentity = {
   score: number | null;
 };
 
-const getMainStages = (matches: TournamentBracketMatch[]): MainStage[] => {
-  return matches.some((match) => match.stage === 'quarterfinal')
+const getMainStages = (matches: TournamentBracketMatch[]): MainStage[] =>
+  matches.some((match) => match.stage === 'quarterfinal')
     ? ['quarterfinal', 'semifinal', 'final']
     : ['semifinal', 'final'];
-};
 
 const getMainHeading = (language: Language, stage: MainStage, matchCount: number) => {
   if (stage === 'quarterfinal') {
@@ -116,7 +115,77 @@ const getMainHeading = (language: Language, stage: MainStage, matchCount: number
   return stageHeadings[language][stage];
 };
 
-const compactPlayerName = (name: string, maxLength = 11) => {
+const localizeLegacyMatchLabel = (language: Language, label: string) => {
+  if (language === 'en') {
+    return label;
+  }
+
+  if (label === 'Grand Final') {
+    return '决赛';
+  }
+
+  if (label === 'Third Place Match') {
+    return '季军赛';
+  }
+
+  const quarterMatch = label.match(/^(Quarterfinal|Qualifier|Play-In)\s+(\d+)$/);
+  if (quarterMatch) {
+    const stageText =
+      quarterMatch[1] === 'Quarterfinal'
+        ? '四分之一决赛'
+        : quarterMatch[1] === 'Play-In'
+          ? '附加赛'
+          : '资格赛';
+    return `${stageText} ${quarterMatch[2]}`;
+  }
+
+  const semifinalMatch = label.match(/^Semifinal\s+(\d+)$/);
+  if (semifinalMatch) {
+    return `半决赛 ${semifinalMatch[1]}`;
+  }
+
+  return label;
+};
+
+const localizeSourceLabel = (language: Language, source: string | null) => {
+  if (!source) {
+    return '';
+  }
+
+  if (language === 'en') {
+    return source;
+  }
+
+  const winnerMatch = source.match(/^Winner of (.+)$/);
+  if (winnerMatch) {
+    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}胜者`;
+  }
+
+  const loserMatch = source.match(/^Loser of (.+)$/);
+  if (loserMatch) {
+    return `${localizeLegacyMatchLabel(language, loserMatch[1])}败者`;
+  }
+
+  return localizeLegacyMatchLabel(language, source);
+};
+
+const getMatchDisplayLabel = (language: Language, match: TournamentBracketMatch) => {
+  if (match.stage === 'final') {
+    return language === 'zh' ? '决赛' : 'Grand Final';
+  }
+
+  if (match.stage === 'third_place') {
+    return language === 'zh' ? '季军赛' : 'Third Place Match';
+  }
+
+  if (match.stage === 'semifinal') {
+    return language === 'zh' ? `半决赛 ${match.slot}` : `Semifinal ${match.slot}`;
+  }
+
+  return language === 'zh' ? `资格赛 ${match.slot}` : `Qualifier ${match.slot}`;
+};
+
+const compactPlayerName = (name: string, maxLength = 14) => {
   if (name.length <= maxLength) {
     return name;
   }
@@ -125,6 +194,7 @@ const compactPlayerName = (name: string, maxLength = 11) => {
 };
 
 const getPlayerIdentity = (
+  language: Language,
   match: TournamentBracketMatch,
   slot: 1 | 2,
   labels: { unknown: string },
@@ -134,13 +204,14 @@ const getPlayerIdentity = (
   const source = slot === 1 ? match.player1Source : match.player2Source;
   const avatarUrl = slot === 1 ? match.player1AvatarUrl : match.player2AvatarUrl;
   const score = slot === 1 ? match.player1Score : match.player2Score;
-  const resolvedName = name || source || labels.unknown;
+  const sourceLabel = localizeSourceLabel(language, source);
+  const resolvedName = name || sourceLabel || labels.unknown;
 
   return {
     id,
     name: resolvedName,
     displayLabel: compactPlayerName(resolvedName),
-    helperText: source ?? resolvedName,
+    helperText: sourceLabel || resolvedName,
     avatarUrl,
     score,
   };
@@ -248,7 +319,7 @@ export default function TournamentBracket({
                   d={connector.d}
                   fill="none"
                   stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.34)' : 'rgba(100, 116, 139, 0.28)'}
-                  strokeWidth="2"
+                  strokeWidth="2.4"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -267,11 +338,15 @@ export default function TournamentBracket({
               {mainMatches.map((match) => {
                 const tone = getTournamentMatchStatusTone(match.status);
                 const isSelected = selectedMatchId === match.id;
-                const isMine = Boolean(currentUserId && (match.player1Id === currentUserId || match.player2Id === currentUserId));
-                const player1 = getPlayerIdentity(match, 1, labels);
-                const player2 = getPlayerIdentity(match, 2, labels);
+                const isMine = Boolean(
+                  currentUserId &&
+                    (match.player1Id === currentUserId || match.player2Id === currentUserId),
+                );
+                const player1 = getPlayerIdentity(language, match, 1, labels);
+                const player2 = getPlayerIdentity(language, match, 2, labels);
                 const gridColumn = mainStages.indexOf(match.stage) + 1;
                 const gridRow = rowMap[match.stage][match.slot];
+                const displayLabel = getMatchDisplayLabel(language, match);
 
                 return (
                   <button
@@ -280,7 +355,7 @@ export default function TournamentBracket({
                     onClick={() => onSelectMatch(match)}
                     style={{ gridColumn, gridRow }}
                     className={clsx(
-                      'h-[102px] w-[206px] overflow-hidden rounded-[1.45rem] border p-3 text-left transition-all shadow-[0_14px_26px_rgba(2,6,23,0.08)]',
+                      'h-[142px] w-[250px] overflow-hidden rounded-[1.55rem] border p-3.5 text-left transition-all shadow-[0_16px_30px_rgba(2,6,23,0.08)]',
                       theme === 'dark'
                         ? 'border-white/8 bg-zinc-900/92 hover:bg-zinc-900'
                         : 'border-zinc-200 bg-white hover:bg-zinc-50',
@@ -290,12 +365,22 @@ export default function TournamentBracket({
                           : 'border-emerald-400 ring-2 ring-emerald-500/30'),
                     )}
                   >
-                    <div className="mb-2.5 flex items-start justify-between gap-2">
+                    <div className="mb-3 flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className={clsx('truncate text-[10px] font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                          {match.label}
+                        <div
+                          className={clsx(
+                            'truncate text-[10px] font-black uppercase tracking-[0.18em]',
+                            theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500',
+                          )}
+                        >
+                          {displayLabel}
                         </div>
-                        <div className={clsx('mt-1 text-[10px] font-semibold', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+                        <div
+                          className={clsx(
+                            'mt-1 text-[10px] font-semibold',
+                            theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500',
+                          )}
+                        >
                           BO{match.bestOf}
                         </div>
                       </div>
@@ -310,7 +395,7 @@ export default function TournamentBracket({
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {[player1, player2].map((player, index) => {
                         const slot = index === 0 ? 1 : 2;
                         const isWinner = Boolean(match.winnerId && match.winnerId === player.id);
@@ -321,26 +406,29 @@ export default function TournamentBracket({
                             key={`${match.id}-${slot}`}
                             title={player.name}
                             className={clsx(
-                              'flex items-center justify-between gap-2 rounded-2xl border px-2.5 py-2',
-                              theme === 'dark' ? 'border-white/6 bg-zinc-950/78' : 'border-zinc-100 bg-zinc-50',
+                              'flex items-center justify-between gap-2 rounded-2xl border px-3 py-2.5',
+                              theme === 'dark' ? 'border-white/6 bg-zinc-950/80' : 'border-zinc-100 bg-zinc-50',
                               isWinner &&
                                 (theme === 'dark'
                                   ? 'border-emerald-500/35 bg-emerald-500/10'
                                   : 'border-emerald-300 bg-emerald-50'),
                             )}
                           >
-                            <div className="flex min-w-0 items-center gap-2">
+                            <div className="flex min-w-0 items-center gap-2.5">
                               {player.id ? (
                                 <img
-                                  src={player.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`}
+                                  src={
+                                    player.avatarUrl ||
+                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`
+                                  }
                                   alt={player.name}
-                                  className="h-6 w-6 shrink-0 rounded-full object-cover"
+                                  className="h-8 w-8 shrink-0 rounded-full object-cover object-center"
                                   referrerPolicy="no-referrer"
                                 />
                               ) : (
                                 <div
                                   className={clsx(
-                                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black uppercase',
+                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-black uppercase',
                                     theme === 'dark' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500',
                                   )}
                                 >
@@ -349,10 +437,20 @@ export default function TournamentBracket({
                               )}
 
                               <div className="min-w-0">
-                                <div className={clsx('truncate text-[13px] font-black leading-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                                <div
+                                  className={clsx(
+                                    'truncate text-[14px] font-black leading-none',
+                                    theme === 'dark' ? 'text-white' : 'text-zinc-900',
+                                  )}
+                                >
                                   {player.displayLabel}
                                 </div>
-                                <div className={clsx('mt-1 truncate text-[10px]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                                <div
+                                  className={clsx(
+                                    'mt-1 truncate text-[10px]',
+                                    theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500',
+                                  )}
+                                >
                                   {player.helperText}
                                 </div>
                               </div>
@@ -364,7 +462,12 @@ export default function TournamentBracket({
                                   {labels.you}
                                 </span>
                               ) : null}
-                              <div className={clsx('w-4 text-right text-base font-black', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
+                              <div
+                                className={clsx(
+                                  'min-w-5 text-right text-lg font-black',
+                                  theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700',
+                                )}
+                              >
                                 {typeof player.score === 'number' ? player.score : '-'}
                               </div>
                             </div>
@@ -374,7 +477,7 @@ export default function TournamentBracket({
                     </div>
 
                     {isMine ? (
-                      <div className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-500">
+                      <div className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-500">
                         {labels.yourMatch}
                       </div>
                     ) : null}
@@ -390,14 +493,17 @@ export default function TournamentBracket({
         <section
           className={clsx(
             'rounded-[1.8rem] border p-4 sm:p-5',
-            theme === 'dark'
-              ? 'border-white/8 bg-zinc-900/70'
-              : 'border-zinc-200 bg-white shadow-sm',
+            theme === 'dark' ? 'border-white/8 bg-zinc-900/70' : 'border-zinc-200 bg-white shadow-sm',
           )}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className={clsx('text-sm font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+              <h3
+                className={clsx(
+                  'text-sm font-black uppercase tracking-[0.18em]',
+                  theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500',
+                )}
+              >
                 {stageHeadings[language].thirdPlace}
               </h3>
               <p className={clsx('mt-1 text-sm', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
@@ -416,7 +522,7 @@ export default function TournamentBracket({
 
           <div className="grid gap-3 md:grid-cols-2">
             {([1, 2] as const).map((slot) => {
-              const player = getPlayerIdentity(thirdPlaceMatch, slot, labels);
+              const player = getPlayerIdentity(language, thirdPlaceMatch, slot, labels);
               const isWinner = Boolean(thirdPlaceMatch.winnerId && thirdPlaceMatch.winnerId === player.id);
 
               return (
@@ -434,9 +540,12 @@ export default function TournamentBracket({
                   <div className="flex min-w-0 items-center gap-3">
                     {player.id ? (
                       <img
-                        src={player.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`}
+                        src={
+                          player.avatarUrl ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`
+                        }
                         alt={player.name}
-                        className="h-10 w-10 shrink-0 rounded-full object-cover"
+                        className="h-10 w-10 shrink-0 rounded-full object-cover object-center"
                         referrerPolicy="no-referrer"
                       />
                     ) : (

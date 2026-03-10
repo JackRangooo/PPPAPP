@@ -60,8 +60,8 @@ export default function TrophyBadge({ trophy, theme, language }: TrophyBadgeProp
         </div>
 
         <div className={clsx('rounded-2xl border border-black/8 bg-white/40 p-3 backdrop-blur-sm', meta.text)}>
-          <div className="text-[11px] font-black leading-tight line-clamp-2">{trophy.name}</div>
-          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] opacity-80 line-clamp-2">
+          <div className="line-clamp-2 text-[11px] font-black leading-tight">{trophy.name}</div>
+          <div className="mt-1 line-clamp-2 text-[10px] font-bold uppercase tracking-[0.16em] opacity-80">
             {trophy.tournamentName}
           </div>
         </div>

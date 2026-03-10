@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Calendar, ChevronRight, MessageSquare, Shield, Sparkles, Trophy as TrophyIcon, Users } from 'lucide-react';
+import { Bell, Calendar, ChevronRight, MessageSquare, Shield, Sparkles, Trophy as TrophyIcon, Users } from 'lucide-react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import TournamentBracketDialog from '../components/TournamentBracketDialog';
-import TournamentMatchDesk from '../components/TournamentMatchDesk';
 import TournamentPodium from '../components/TournamentPodium';
-import { cancelTournament, createTournament, createTournamentMatchComment, endTournament, getReadableErrorMessage, listProfiles, listTournamentMatchComments, listTournaments, registerForTournament, saveTournamentProgress, startTournament } from '../lib/api';
-import { createCompletionTimeline, createTournamentBracket, forfeitTournamentMatch, getFinalizedTournamentState, setTournamentMatchReady, sortTournamentTimeline, submitTournamentMatchScore } from '../lib/tournamentBracket';
+import { cancelTournament, createTournament, createTournamentMatchComment, endTournament, getReadableErrorMessage, listProfiles, listTournamentMatchComments, listTournaments, registerForTournament, startTournament } from '../lib/api';
+import { createTournamentBracket, sortTournamentTimeline } from '../lib/tournamentBracket';
 import { buildTournamentPreviewCard, getTournamentPodiumData, upsertTournament } from '../lib/tournamentPresentation';
 import { subscribeToTable } from '../lib/supabase';
-import type { Tournament, TournamentBracketMatch, TournamentMatchComment, UserProfile } from '../types';
+import type { Tournament, TournamentMatchComment, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
 type TournamentLane = 'registration' | 'ongoing' | 'preview';
@@ -41,7 +40,7 @@ const copy = {
     viewBracket: 'Open Bracket',
     bracketTitle: 'Live Bracket',
     closeBracket: 'Close',
-    bracketHint: 'The bracket opens in a horizontal viewer with zoom controls.',
+    bracketHint: 'The bracket opens in a landscape-style viewer with zoom controls.',
     rootOnly: 'Publishing, bracket generation, cancel, and emergency settlement are root-only actions.',
     participants: 'Players',
     registeredListTitle: 'Registered Players',
@@ -53,7 +52,7 @@ const copy = {
     noBracket: 'Generate the bracket once registration is complete.',
     tournamentCancelled: 'This tournament was cancelled.',
     matchAlert: 'Your next tournament match is ready.',
-    matchAlertSubtitle: 'Use the same ready flow as a casual match, then submit the final score.',
+    matchAlertSubtitle: 'Use the floating message bubble to confirm readiness and submit scores.',
     minPlayersHint: 'Need at least 4 players and at most 8 players before the event can start.',
     registrationClosed: 'Registration closes as soon as the bracket is generated.',
     createSuccess: 'Tournament created.',
@@ -61,20 +60,15 @@ const copy = {
     cancelSuccess: 'Tournament cancelled.',
     settleSuccess: 'Tournament settled.',
     commentSuccess: 'Comment posted.',
-    readyPending: 'You are ready. Waiting for your opponent.',
-    readyOngoing: 'Both players are ready. The match desk is now live.',
-    submitWaiting: 'Result submitted. Waiting for your opponent to confirm.',
-    submitReset: 'The two submissions did not match, so this result was reset.',
-    submitCompleted: 'Match result confirmed and the bracket was updated.',
-    forfeitConfirm: 'Forfeit this match and send your opponent forward?',
     cancelConfirm: 'Cancel this tournament? This cannot be undone.',
     startConfirm: 'Generate the bracket and lock registration?',
     settleConfirm: 'Force settle this tournament now?',
     noProfileForBracket: 'Some participant profiles are still missing. Refresh and try again.',
-    invalidScore: 'Enter the final score for both players. Scores cannot be tied.',
     noPreviewCta: 'System tournaments refresh weekly.',
     cardSummaryRegistration: 'Single-elimination bracket with a third-place match.',
     cardSummaryOngoing: 'Bracket is live. Open the viewer to track advancement.',
+    messageCenterTitle: 'Match Message Center',
+    messageCenterDescription: 'Casual challenges and tournament score reporting are now handled by the floating glass bubble.',
   },
   zh: {
     hub: '排位赛赛事大厅',
@@ -100,7 +94,7 @@ const copy = {
     viewBracket: '打开对阵表',
     bracketTitle: '实时对阵表',
     closeBracket: '关闭',
-    bracketHint: '对阵表会以横向查看器打开，并支持缩放。',
+    bracketHint: '对阵表会优先按横屏模式查看，并支持缩放。',
     rootOnly: '发布、生成对阵、取消和紧急结算都由 root 管理员控制。',
     participants: '球员',
     registeredListTitle: '已报名球员',
@@ -112,7 +106,7 @@ const copy = {
     noBracket: '报名结束后，由管理员生成正式对阵表。',
     tournamentCancelled: '这场锦标赛已取消。',
     matchAlert: '你的下一场锦标赛已经排好。',
-    matchAlertSubtitle: '流程和娱乐赛一致，先准备就绪，再提交最终比分。',
+    matchAlertSubtitle: '准备确认和比分提交已经移到右下角的悬浮消息气泡中。',
     minPlayersHint: '至少 4 人、最多 8 人后才能正式开赛。',
     registrationClosed: '正式生成对阵后将停止报名。',
     createSuccess: '赛事已创建。',
@@ -120,27 +114,19 @@ const copy = {
     cancelSuccess: '赛事已取消。',
     settleSuccess: '赛事已完成结算。',
     commentSuccess: '评论已发布。',
-    readyPending: '你已准备就绪，等待对手确认。',
-    readyOngoing: '双方都已准备就绪，可以开始比赛并提交比分。',
-    submitWaiting: '比分已提交，等待对手确认。',
-    submitReset: '双方提交结果不一致，本场比分已被重置。',
-    submitCompleted: '比分已确认，对阵表已更新。',
-    forfeitConfirm: '确认退赛并让对手直接晋级吗？',
     cancelConfirm: '确认取消这场锦标赛吗？此操作无法撤销。',
     startConfirm: '确认生成对阵表并关闭报名吗？',
     settleConfirm: '确认现在紧急结算这场锦标赛吗？',
     noProfileForBracket: '部分参赛者资料还没同步到前端，请刷新后再试。',
-    invalidScore: '请输入双方最终比分，且不能打平。',
     noPreviewCta: '系统赛会按周自动刷新。',
     cardSummaryRegistration: '正式单败淘汰赛，包含季军赛。',
     cardSummaryOngoing: '对阵已经开始，打开对阵表即可查看实时晋级。',
+    messageCenterTitle: '比赛消息中心',
+    messageCenterDescription: '娱乐局挑战和锦标赛比分提交都已经转移到悬浮玻璃消息气泡里处理。',
   },
 } as const;
 
-const badgeStyles = {
-  system: 'bg-emerald-500/12 text-emerald-500',
-  admin: 'bg-sky-500/12 text-sky-500',
-} as const;
+const badgeStyles = { system: 'bg-emerald-500/12 text-emerald-500', admin: 'bg-sky-500/12 text-sky-500' } as const;
 
 export default function TournamentsScreen() {
   const { userProfile, theme, language } = useAuth();
@@ -152,8 +138,6 @@ export default function TournamentsScreen() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [comments, setComments] = useState<TournamentMatchComment[]>([]);
   const [commentBody, setCommentBody] = useState('');
-  const [myScore, setMyScore] = useState('');
-  const [opponentScore, setOpponentScore] = useState('');
   const [lane, setLane] = useState<TournamentLane>('registration');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -172,11 +156,9 @@ export default function TournamentsScreen() {
       setTournaments(nextTournaments);
       setProfilesById(nextProfiles);
     };
-
     void refresh().finally(() => {
       if (active) setLoading(false);
     });
-
     const stopTournaments = subscribeToTable('tournaments', () => void refresh());
     const stopProfiles = subscribeToTable('profiles', () => void refresh());
     return () => {
@@ -195,7 +177,6 @@ export default function TournamentsScreen() {
   const featuredTournament = lane === 'preview' ? null : visibleTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? visibleTournaments[0] ?? activeTournaments[0] ?? null;
   const selectedMatch = featuredTournament?.bracket.matches.find((match) => match.id === selectedMatchId) ?? featuredTournament?.bracket.matches.find((match) => userProfile && (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid)) ?? featuredTournament?.bracket.matches[0] ?? null;
   const myActiveMatch = featuredTournament?.bracket.matches.find((match) => userProfile && (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid) && (match.status === 'pending' || match.status === 'ongoing' || match.status === 'waiting_confirmation')) ?? null;
-  const deskMatch = myActiveMatch ?? selectedMatch;
   const canManageTournament = Boolean(userProfile?.isRoot);
   const hasActiveAdminTournament = activeTournaments.some((tournament) => tournament.source === 'admin');
 
@@ -216,22 +197,6 @@ export default function TournamentsScreen() {
   }, [featuredTournament, myActiveMatch]);
 
   useEffect(() => {
-    if (!deskMatch || !userProfile) {
-      setMyScore('');
-      setOpponentScore('');
-      return;
-    }
-    if (deskMatch.status === 'waiting_confirmation' && deskMatch.player1Score !== null && deskMatch.player2Score !== null) {
-      const isPlayer1 = deskMatch.player1Id === userProfile.uid;
-      setMyScore(String(isPlayer1 ? deskMatch.player1Score : deskMatch.player2Score));
-      setOpponentScore(String(isPlayer1 ? deskMatch.player2Score : deskMatch.player1Score));
-      return;
-    }
-    setMyScore('');
-    setOpponentScore('');
-  }, [deskMatch, userProfile]);
-
-  useEffect(() => {
     if (!featuredTournament || !selectedMatch || (selectedMatch.status !== 'completed' && selectedMatch.status !== 'walkover')) {
       setComments([]);
       return;
@@ -248,21 +213,6 @@ export default function TournamentsScreen() {
   }, [featuredTournament, selectedMatch]);
 
   const replaceTournament = (nextTournament: Tournament) => setTournaments((current) => upsertTournament(current, nextTournament));
-  const persistBracketUpdate = async (tournament: Tournament, match: TournamentBracketMatch, nextBracket: Tournament['bracket'], nextTimeline: Tournament['timeline']) => {
-    const finalized = getFinalizedTournamentState(nextBracket);
-    const completionTimeline = finalized.status === 'completed' ? createCompletionTimeline(tournament, nextBracket) : [];
-    return saveTournamentProgress({
-      tournamentId: tournament.id,
-      matchId: match.id,
-      bracket: nextBracket,
-      timeline: sortTournamentTimeline([...completionTimeline, ...nextTimeline]),
-      status: finalized.status,
-      winnerId: finalized.winnerId,
-      runnerUpId: finalized.runnerUpId,
-      thirdPlaceId: finalized.thirdPlaceId,
-    });
-  };
-
   const runMutation = async (fallbackMessage: string, action: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -316,45 +266,6 @@ export default function TournamentsScreen() {
     window.alert(ui.settleSuccess);
   });
 
-  const handleDeskReady = async () => {
-    if (!featuredTournament || !deskMatch || !userProfile) return;
-    await runMutation(ui.readyPending, async () => {
-      const result = setTournamentMatchReady(featuredTournament, featuredTournament.bracket, deskMatch.id, userProfile.uid);
-      const updated = await persistBracketUpdate(featuredTournament, deskMatch, result.bracket, [...result.timeline, ...featuredTournament.timeline]);
-      replaceTournament(updated);
-      window.alert(result.result === 'ongoing' ? ui.readyOngoing : ui.readyPending);
-    });
-  };
-
-  const handleDeskSubmit = async () => {
-    if (!featuredTournament || !deskMatch || !userProfile) return;
-    const myValue = Number(myScore);
-    const opponentValue = Number(opponentScore);
-    if (!Number.isFinite(myValue) || !Number.isFinite(opponentValue) || myValue === opponentValue) {
-      window.alert(ui.invalidScore);
-      return;
-    }
-    await runMutation(ui.invalidScore, async () => {
-      const result = submitTournamentMatchScore(featuredTournament, featuredTournament.bracket, deskMatch.id, userProfile.uid, myValue, opponentValue);
-      const updated = await persistBracketUpdate(featuredTournament, deskMatch, result.bracket, [...result.timeline, ...featuredTournament.timeline]);
-      replaceTournament(updated);
-      setMyScore('');
-      setOpponentScore('');
-      window.alert(result.result === 'waiting' ? ui.submitWaiting : result.result === 'reset' ? ui.submitReset : ui.submitCompleted);
-    });
-  };
-
-  const handleDeskForfeit = async () => {
-    if (!featuredTournament || !deskMatch || !userProfile || !window.confirm(ui.forfeitConfirm)) return;
-    await runMutation(ui.forfeitConfirm, async () => {
-      const result = forfeitTournamentMatch(featuredTournament, featuredTournament.bracket, deskMatch.id, userProfile.uid);
-      const updated = await persistBracketUpdate(featuredTournament, deskMatch, result.bracket, [...result.timeline, ...featuredTournament.timeline]);
-      replaceTournament(updated);
-      setMyScore('');
-      setOpponentScore('');
-    });
-  };
-
   const handlePostComment = async () => {
     if (!featuredTournament || !selectedMatch || !commentBody.trim()) return;
     await runMutation(ui.commentSuccess, async () => {
@@ -374,57 +285,27 @@ export default function TournamentsScreen() {
     { id: 'preview' as const, label: ui.previewTab, hint: ui.previewHint, count: 1 },
   ];
   const formatDateLabel = (value: string | Date) => format(new Date(value), language === 'zh' ? 'M月d日' : 'MMM d');
+
   const renderTournamentCard = (tournament: Tournament) => {
     const isSelected = featuredTournament?.id === tournament.id;
     const isRegistration = tournament.status === 'registration';
     const cardSummary = isRegistration ? ui.cardSummaryRegistration : ui.cardSummaryOngoing;
 
     return (
-      <button
-        key={tournament.id}
-        type="button"
-        onClick={() => setSelectedTournamentId(tournament.id)}
-        className={clsx(
-          'w-full overflow-hidden rounded-[2rem] border text-left transition-all',
-          isSelected
-            ? theme === 'dark'
-              ? 'border-amber-500/35 bg-[linear-gradient(135deg,rgba(120,53,15,0.45),rgba(17,24,39,0.92))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]'
-              : 'border-amber-300 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]'
-            : theme === 'dark'
-              ? 'border-white/5 bg-zinc-900/45 hover:border-amber-500/20 hover:bg-zinc-900/75'
-              : 'border-zinc-200 bg-white hover:border-amber-200 hover:bg-amber-50/40 shadow-sm',
-        )}
-      >
+      <button key={tournament.id} type="button" onClick={() => setSelectedTournamentId(tournament.id)} className={clsx('w-full overflow-hidden rounded-[2rem] border text-left transition-all', isSelected ? theme === 'dark' ? 'border-amber-500/35 bg-[linear-gradient(135deg,rgba(120,53,15,0.45),rgba(17,24,39,0.92))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]' : 'border-amber-300 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]' : theme === 'dark' ? 'border-white/5 bg-zinc-900/45 hover:border-amber-500/20 hover:bg-zinc-900/75' : 'border-zinc-200 bg-white hover:border-amber-200 hover:bg-amber-50/40 shadow-sm')}>
         <div className="relative p-5">
-          <div className="pointer-events-none absolute right-4 top-2 opacity-[0.08]">
-            <TrophyIcon className="h-24 w-24 text-amber-500" />
-          </div>
+          <div className="pointer-events-none absolute right-4 top-2 opacity-[0.08]"><TrophyIcon className="h-24 w-24 text-amber-500" /></div>
           <div className="relative z-10">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[tournament.source])}>
-                {tournament.source === 'admin' ? ui.adminSource : ui.systemSource}
-              </span>
-              <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
-                {isRegistration ? ui.registrationTab : ui.ongoingTab}
-              </span>
+              <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[tournament.source])}>{tournament.source === 'admin' ? ui.adminSource : ui.systemSource}</span>
+              <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">{isRegistration ? ui.registrationTab : ui.ongoingTab}</span>
             </div>
-            <div className={clsx('mt-4 text-2xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-              {tournament.name || t('play.weeklyChampionship')}
-            </div>
+            <div className={clsx('mt-4 text-2xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{tournament.name || t('play.weeklyChampionship')}</div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-500">
-              <div className="inline-flex items-center gap-1.5">
-                <Calendar className="h-4 w-4" />
-                {formatDateLabel(tournament.startDate)} - {formatDateLabel(tournament.endDate)}
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                {tournament.participants.length} {ui.participants}
-              </div>
+              <div className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDateLabel(tournament.startDate)} - {formatDateLabel(tournament.endDate)}</div>
+              <div className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{tournament.participants.length} {ui.participants}</div>
             </div>
-            <div className={clsx('mt-4 inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium', theme === 'dark' ? 'bg-zinc-950/75 text-zinc-100' : 'bg-zinc-950 text-zinc-100')}>
-              <Shield className="h-4 w-4 text-emerald-500" />
-              <span>{cardSummary}</span>
-            </div>
+            <div className={clsx('mt-4 inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium', theme === 'dark' ? 'bg-zinc-950/75 text-zinc-100' : 'bg-zinc-950 text-zinc-100')}><Shield className="h-4 w-4 text-emerald-500" /><span>{cardSummary}</span></div>
           </div>
         </div>
       </button>
@@ -435,61 +316,24 @@ export default function TournamentsScreen() {
     <div className="space-y-6 pb-12">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
-            <Sparkles className="h-4 w-4" />
-            {ui.hub}
-          </div>
-          <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            {ui.hub}
-          </h2>
-          <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
-            {ui.hubSubtitle}
-          </p>
-          <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-            {ui.rootOnly}
-          </p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500"><Sparkles className="h-4 w-4" />{ui.hub}</div>
+          <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.hub}</h2>
+          <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>{ui.hubSubtitle}</p>
+          <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>{ui.rootOnly}</p>
         </div>
-
-        {canManageTournament ? (
-          <button
-            onClick={() => void handleCreateTournament()}
-            disabled={busy || hasActiveAdminTournament}
-            title={hasActiveAdminTournament ? ui.createTournamentBlocked : ui.createTournament}
-            className="rounded-2xl bg-amber-500 px-5 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {ui.createTournament}
-          </button>
-        ) : null}
+        {canManageTournament ? <button onClick={() => void handleCreateTournament()} disabled={busy || hasActiveAdminTournament} title={hasActiveAdminTournament ? ui.createTournamentBlocked : ui.createTournament} className="rounded-2xl bg-amber-500 px-5 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{ui.createTournament}</button> : null}
       </section>
 
       <section className={clsx('rounded-[2rem] border p-2', theme === 'dark' ? 'border-white/5 bg-zinc-900/55' : 'border-zinc-200 bg-white shadow-sm')}>
         <div className="grid grid-cols-3 gap-2">
           {laneOptions.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setLane(option.id)}
-              className={clsx(
-                'rounded-[1.5rem] px-3 py-3 text-left transition-all sm:px-4',
-                lane === option.id
-                  ? theme === 'dark'
-                    ? 'bg-[linear-gradient(135deg,rgba(245,158,11,0.28),rgba(120,53,15,0.5))] text-white shadow-[0_12px_24px_rgba(245,158,11,0.12)]'
-                    : 'bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(254,215,170,0.95))] text-zinc-900 shadow-[0_10px_20px_rgba(245,158,11,0.12)]'
-                  : theme === 'dark'
-                    ? 'bg-zinc-950/70 text-zinc-300 hover:bg-zinc-900'
-                    : 'bg-zinc-50 text-zinc-700 hover:bg-amber-50',
-              )}
-            >
+            <button key={option.id} type="button" onClick={() => setLane(option.id)} className={clsx('rounded-[1.5rem] px-3 py-3 text-left transition-all sm:px-4', lane === option.id ? theme === 'dark' ? 'bg-[linear-gradient(135deg,rgba(245,158,11,0.28),rgba(120,53,15,0.5))] text-white shadow-[0_12px_24px_rgba(245,158,11,0.12)]' : 'bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(254,215,170,0.95))] text-zinc-900 shadow-[0_10px_20px_rgba(245,158,11,0.12)]' : theme === 'dark' ? 'bg-zinc-950/70 text-zinc-300 hover:bg-zinc-900' : 'bg-zinc-50 text-zinc-700 hover:bg-amber-50')}>
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-sm font-black">{option.label}</div>
-                  <div className={clsx('mt-1 text-xs', lane === option.id ? 'text-inherit/80' : 'text-zinc-500')}>
-                    {option.hint}
-                  </div>
+                  <div className={clsx('mt-1 text-xs', lane === option.id ? 'text-inherit/80' : 'text-zinc-500')}>{option.hint}</div>
                 </div>
-                <span className={clsx('flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-black', lane === option.id ? 'bg-zinc-950/90 text-amber-400' : theme === 'dark' ? 'bg-zinc-900 text-zinc-200' : 'bg-white text-zinc-700')}>
-                  {option.count}
-                </span>
+                <span className={clsx('flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-black', lane === option.id ? 'bg-zinc-950/90 text-amber-400' : theme === 'dark' ? 'bg-zinc-900 text-zinc-200' : 'bg-white text-zinc-700')}>{option.count}</span>
               </div>
             </button>
           ))}
@@ -498,200 +342,85 @@ export default function TournamentsScreen() {
 
       {lane === 'preview' ? (
         <section className={clsx('relative overflow-hidden rounded-[2.2rem] border p-6', theme === 'dark' ? 'border-amber-500/25 bg-[linear-gradient(135deg,rgba(120,53,15,0.4),rgba(17,24,39,0.94))]' : 'border-amber-200 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-sm')}>
-          <div className="pointer-events-none absolute right-4 top-2 opacity-[0.08]">
-            <TrophyIcon className="h-32 w-32 text-amber-500" />
-          </div>
+          <div className="pointer-events-none absolute right-4 top-2 opacity-[0.08]"><TrophyIcon className="h-32 w-32 text-amber-500" /></div>
           <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
-              {ui.previewBadge}
-            </div>
-            <h3 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-              {previewCard.title}
-            </h3>
-            <p className={clsx('mt-3 text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
-              {previewCard.description}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-zinc-500">
-              <div className="inline-flex items-center gap-1.5">
-                <Calendar className="h-4 w-4" />
-                {formatDateLabel(previewCard.startDate)} - {formatDateLabel(previewCard.endDate)}
-              </div>
-            </div>
-            <div className={clsx('mt-5 rounded-[1.5rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/60 text-zinc-300' : 'border-zinc-200 bg-white/70 text-zinc-700')}>
-              {ui.noPreviewCta}
-            </div>
+            <div className="inline-flex rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">{ui.previewBadge}</div>
+            <h3 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{previewCard.title}</h3>
+            <p className={clsx('mt-3 text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{previewCard.description}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm font-medium text-zinc-500"><div className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDateLabel(previewCard.startDate)} - {formatDateLabel(previewCard.endDate)}</div></div>
+            <div className={clsx('mt-5 rounded-[1.5rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/60 text-zinc-300' : 'border-zinc-200 bg-white/70 text-zinc-700')}>{ui.noPreviewCta}</div>
           </div>
         </section>
       ) : visibleTournaments.length === 0 ? (
-        <section className={clsx('rounded-[2rem] border p-8 text-center text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-900/45 text-zinc-500' : 'border-zinc-200 bg-white text-zinc-500 shadow-sm')}>
-          {lane === 'registration' ? ui.noRegistration : ui.noOngoing}
-        </section>
+        <section className={clsx('rounded-[2rem] border p-8 text-center text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-900/45 text-zinc-500' : 'border-zinc-200 bg-white text-zinc-500 shadow-sm')}>{lane === 'registration' ? ui.noRegistration : ui.noOngoing}</section>
       ) : (
         <div className="space-y-6">
-          <div className="space-y-4">
-            {visibleTournaments.map((tournament) => renderTournamentCard(tournament))}
-          </div>
+          <div className="space-y-4">{visibleTournaments.map((tournament) => renderTournamentCard(tournament))}</div>
           {featuredTournament ? (
             <>
               <section className={clsx('relative overflow-hidden rounded-[2.25rem] border p-6', theme === 'dark' ? 'border-amber-500/20 bg-[linear-gradient(135deg,rgba(120,53,15,0.4),rgba(17,24,39,0.94))]' : 'border-amber-200 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-sm')}>
-                <div className="pointer-events-none absolute right-4 top-0 opacity-[0.08]">
-                  <TrophyIcon className="h-36 w-36 text-amber-500" />
-                </div>
+                <div className="pointer-events-none absolute right-4 top-0 opacity-[0.08]"><TrophyIcon className="h-36 w-36 text-amber-500" /></div>
                 <div className="relative z-10 space-y-5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[featuredTournament.source])}>
-                      {featuredTournament.source === 'admin' ? ui.adminSource : ui.systemSource}
-                    </span>
-                    <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
-                      {featuredTournament.status === 'registration' ? ui.registrationTab : ui.ongoingTab}
-                    </span>
+                    <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[featuredTournament.source])}>{featuredTournament.source === 'admin' ? ui.adminSource : ui.systemSource}</span>
+                    <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">{featuredTournament.status === 'registration' ? ui.registrationTab : ui.ongoingTab}</span>
                   </div>
-
                   <div>
-                    <h3 className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                      {featuredTournament.name}
-                    </h3>
+                    <h3 className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{featuredTournament.name}</h3>
                     <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-500">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Calendar className="h-4 w-4" />
-                        {formatDateLabel(featuredTournament.startDate)} - {formatDateLabel(featuredTournament.endDate)}
-                      </div>
-                      <div className="inline-flex items-center gap-1.5">
-                        <Users className="h-4 w-4" />
-                        {featuredTournament.participants.length} {ui.participants}
-                      </div>
+                      <div className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDateLabel(featuredTournament.startDate)} - {formatDateLabel(featuredTournament.endDate)}</div>
+                      <div className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{featuredTournament.participants.length} {ui.participants}</div>
                     </div>
                   </div>
-
                   <div className={clsx('rounded-[1.6rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/65 text-zinc-300' : 'border-zinc-200 bg-white/75 text-zinc-700')}>
                     <div>{ui.minPlayersHint}</div>
                     <div className="mt-1">{ui.registrationClosed}</div>
                     <div className="mt-1">{ui.bracketHint}</div>
                   </div>
-
                   <div className="flex flex-wrap gap-3">
-                    {featuredTournament.status === 'registration' ? (
-                      <button
-                        onClick={() => void handleRegister(featuredTournament.id)}
-                        disabled={busy || featuredTournament.participants.includes(userProfile?.uid || '')}
-                        className="rounded-2xl bg-amber-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {featuredTournament.participants.includes(userProfile?.uid || '') ? t('play.registered') : t('play.joinTournament')}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setBracketOpen(true)}
-                        className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white hover:bg-zinc-900' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}
-                      >
-                        {ui.viewBracket}
-                      </button>
-                    )}
-
-                    {canManageTournament && featuredTournament.status === 'registration' ? (
-                      <button onClick={() => void handleStartTournament(featuredTournament)} disabled={busy} className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60">
-                        {ui.startTournament}
-                      </button>
-                    ) : null}
-
-                    {canManageTournament && featuredTournament.status !== 'completed' && featuredTournament.status !== 'cancelled' ? (
-                      <button onClick={() => void handleCancelTournament(featuredTournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-900 text-white hover:bg-zinc-800' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>
-                        {ui.cancelTournament}
-                      </button>
-                    ) : null}
-
-                    {canManageTournament && featuredTournament.status === 'ongoing' ? (
-                      <button onClick={() => void handleForceSettle(featuredTournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-800 text-white hover:bg-zinc-700' : 'border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200')}>
-                        {ui.forceSettle}
-                      </button>
-                    ) : null}
+                    {featuredTournament.status === 'registration' ? <button onClick={() => void handleRegister(featuredTournament.id)} disabled={busy || featuredTournament.participants.includes(userProfile?.uid || '')} className="rounded-2xl bg-amber-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{featuredTournament.participants.includes(userProfile?.uid || '') ? t('play.registered') : t('play.joinTournament')}</button> : <button onClick={() => setBracketOpen(true)} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white hover:bg-zinc-900' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>{ui.viewBracket}</button>}
+                    {canManageTournament && featuredTournament.status === 'registration' ? <button onClick={() => void handleStartTournament(featuredTournament)} disabled={busy} className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60">{ui.startTournament}</button> : null}
+                    {canManageTournament && featuredTournament.status !== 'completed' && featuredTournament.status !== 'cancelled' ? <button onClick={() => void handleCancelTournament(featuredTournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-900 text-white hover:bg-zinc-800' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>{ui.cancelTournament}</button> : null}
+                    {canManageTournament && featuredTournament.status === 'ongoing' ? <button onClick={() => void handleForceSettle(featuredTournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-800 text-white hover:bg-zinc-700' : 'border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200')}>{ui.forceSettle}</button> : null}
                   </div>
                 </div>
               </section>
 
-              {myActiveMatch ? (
-                <section className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/8' : 'border-emerald-200 bg-emerald-50 shadow-sm')}>
-                  <div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-500">{ui.matchAlert}</div>
-                  <div className={clsx('mt-2 text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
-                    {ui.matchAlertSubtitle}
-                  </div>
-                </section>
-              ) : null}
+              {myActiveMatch ? <section className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/8' : 'border-emerald-200 bg-emerald-50 shadow-sm')}><div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-500">{ui.matchAlert}</div><div className={clsx('mt-2 text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{ui.matchAlertSubtitle}</div></section> : null}
 
               <section className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                 <div className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
-                  <div className="mb-4 flex items-center gap-2">
-                    <Users className="h-5 w-5 text-amber-500" />
-                    <h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                      {ui.registeredListTitle}
-                    </h2>
-                  </div>
+                  <div className="mb-4 flex items-center gap-2"><Users className="h-5 w-5 text-amber-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.registeredListTitle}</h2></div>
                   <div className="flex flex-wrap gap-2">
                     {featuredTournament.participants.map((participantId) => {
                       const profile = profilesById[participantId];
                       if (!profile) return null;
-                      return (
-                        <div key={profile.uid} className={clsx('inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold', theme === 'dark' ? 'border-white/5 bg-zinc-950/70 text-zinc-200' : 'border-zinc-200 bg-zinc-50 text-zinc-700')}>
-                          <img src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName)}&background=random`} alt={profile.displayName} className="h-6 w-6 rounded-full object-cover" referrerPolicy="no-referrer" />
-                          <span>{profile.displayName}</span>
-                        </div>
-                      );
+                      return <div key={profile.uid} className={clsx('inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold', theme === 'dark' ? 'border-white/5 bg-zinc-950/70 text-zinc-200' : 'border-zinc-200 bg-zinc-50 text-zinc-700')}><img src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName)}&background=random`} alt={profile.displayName} className="h-6 w-6 rounded-full object-cover object-center" referrerPolicy="no-referrer" /><span>{profile.displayName}</span></div>;
                     })}
                   </div>
                 </div>
-
                 <TournamentPodium theme={theme} language={language} entries={podium.podiumEntries} standings={podium.standings} />
               </section>
 
-              <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-                <TournamentMatchDesk
-                  theme={theme}
-                  language={language}
-                  match={deskMatch}
-                  currentUserId={userProfile?.uid ?? null}
-                  myScore={myScore}
-                  opponentScore={opponentScore}
-                  busy={busy}
-                  onMyScoreChange={setMyScore}
-                  onOpponentScoreChange={setOpponentScore}
-                  onReady={() => void handleDeskReady()}
-                  onSubmitScore={() => void handleDeskSubmit()}
-                  onForfeit={() => void handleDeskForfeit()}
-                />
+              <section className="grid gap-6 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+                <div className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
+                  <div className="mb-4 flex items-center gap-2"><Bell className="h-5 w-5 text-emerald-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.messageCenterTitle}</h2></div>
+                  <div className={clsx('rounded-[1.5rem] border px-4 py-4 text-sm leading-6', theme === 'dark' ? 'border-white/6 bg-zinc-950/60 text-zinc-300' : 'border-zinc-200 bg-zinc-50 text-zinc-700')}>{ui.messageCenterDescription}</div>
+                </div>
 
                 <div className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
-                  <div className="mb-4 flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5 text-sky-500" />
-                    <h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                      {ui.matchComments}
-                    </h2>
-                  </div>
-
+                  <div className="mb-4 flex items-center gap-2"><MessageSquare className="h-5 w-5 text-sky-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.matchComments}</h2></div>
                   {selectedMatch && (selectedMatch.status === 'completed' || selectedMatch.status === 'walkover') ? (
                     <div className="space-y-4">
                       <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                        {comments.length > 0 ? comments.map((comment) => (
-                          <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}>
-                            <div className="mb-2 flex items-center justify-between gap-3">
-                              <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div>
-                              <div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'M月d日 HH:mm' : 'MMM d, HH:mm')}</div>
-                            </div>
-                            <div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div>
-                          </div>
-                        )) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
+                        {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'M月d日 HH:mm' : 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
                       </div>
-
                       <div className="space-y-3">
                         <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} placeholder={ui.commentPlaceholder} rows={4} className={clsx('w-full resize-none rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500/30', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400')} />
-                        <button onClick={() => void handlePostComment()} disabled={!commentBody.trim() || busy} className="rounded-2xl bg-sky-500 px-5 py-3 font-bold text-zinc-950 transition-colors hover:bg-sky-400 disabled:opacity-50">
-                          {ui.postComment}
-                        </button>
+                        <button onClick={() => void handlePostComment()} disabled={!commentBody.trim() || busy} className="rounded-2xl bg-sky-500 px-5 py-3 font-bold text-zinc-950 transition-colors hover:bg-sky-400 disabled:opacity-50">{ui.postComment}</button>
                       </div>
                     </div>
-                  ) : (
-                    <div className={clsx('rounded-2xl border p-4 text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-950/60 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-500')}>
-                      {ui.commentsLocked}
-                    </div>
-                  )}
+                  ) : <div className={clsx('rounded-2xl border p-4 text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-950/60 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-500')}>{ui.commentsLocked}</div>}
                 </div>
               </section>
             </>
@@ -700,42 +429,11 @@ export default function TournamentsScreen() {
       )}
 
       <section>
-        <h2 className={clsx('mb-4 text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-          {t('play.pastTournaments')}
-        </h2>
-        {pastTournaments.length > 0 ? (
-          <div className="space-y-3">
-            {pastTournaments.map((tournament) => (
-              <div key={tournament.id} className={clsx('flex items-center justify-between rounded-2xl border p-4 transition-colors', theme === 'dark' ? 'border-white/5 bg-zinc-900/30 hover:bg-zinc-800/30' : 'border-zinc-200 bg-white hover:bg-zinc-50 shadow-sm')}>
-                <div>
-                  <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{tournament.name}</div>
-                  <div className="mt-1 text-xs font-medium text-zinc-500">{tournament.participants.length} {t('play.participants')}</div>
-                </div>
-                <ChevronRight className="h-5 w-5 text-zinc-400" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-dashed border-zinc-300/40 px-4 py-6 text-center text-sm font-medium text-zinc-500">
-            {t('play.noPastTournaments')}
-          </div>
-        )}
+        <h2 className={clsx('mb-4 text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{t('play.pastTournaments')}</h2>
+        {pastTournaments.length > 0 ? <div className="space-y-3">{pastTournaments.map((tournament) => <div key={tournament.id} className={clsx('flex items-center justify-between rounded-2xl border p-4 transition-colors', theme === 'dark' ? 'border-white/5 bg-zinc-900/30 hover:bg-zinc-800/30' : 'border-zinc-200 bg-white hover:bg-zinc-50 shadow-sm')}><div><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{tournament.name}</div><div className="mt-1 text-xs font-medium text-zinc-500">{tournament.participants.length} {t('play.participants')}</div></div><ChevronRight className="h-5 w-5 text-zinc-400" /></div>)}</div> : <div className="rounded-2xl border border-dashed border-zinc-300/40 px-4 py-6 text-center text-sm font-medium text-zinc-500">{t('play.noPastTournaments')}</div>}
       </section>
 
-      <TournamentBracketDialog
-        open={bracketOpen}
-        theme={theme}
-        language={language}
-        tournament={featuredTournament}
-        currentUserId={userProfile?.uid ?? null}
-        selectedMatch={selectedMatch}
-        emptyLabel={ui.noBracket}
-        cancelledLabel={ui.tournamentCancelled}
-        title={ui.bracketTitle}
-        closeLabel={ui.closeBracket}
-        onClose={() => setBracketOpen(false)}
-        onSelectMatch={(match) => setSelectedMatchId(match.id)}
-      />
+      <TournamentBracketDialog open={bracketOpen} theme={theme} language={language} tournament={featuredTournament} currentUserId={userProfile?.uid ?? null} selectedMatch={selectedMatch} emptyLabel={ui.noBracket} cancelledLabel={ui.tournamentCancelled} title={ui.bracketTitle} closeLabel={ui.closeBracket} onClose={() => setBracketOpen(false)} onSelectMatch={(match) => setSelectedMatchId(match.id)} />
     </div>
   );
 }

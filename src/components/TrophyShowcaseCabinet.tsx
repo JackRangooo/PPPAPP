@@ -18,11 +18,11 @@ type TrophyShowcaseCabinetProps = {
 const copy = {
   en: {
     empty: 'Empty slot',
-    hint: 'Tap to place a trophy.',
+    hint: 'Tap to place a trophy',
   },
   zh: {
     empty: '空展示位',
-    hint: '点击空位可放入奖杯。',
+    hint: '点击放入奖杯',
   },
 } as const;
 
@@ -52,7 +52,7 @@ export default function TrophyShowcaseCabinet({
           )}
         />
 
-        <div className="relative z-10 grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="relative z-10 grid grid-cols-3 gap-2.5 sm:gap-4">
           {slots.map((slot) => {
             const trophy = trophies.find((currentTrophy) => currentTrophy.id === slot.trophyId) ?? null;
             const isInteractive = Boolean((trophy && onSelectTrophy) || (!trophy && onEmptySlotClick));
@@ -64,54 +64,54 @@ export default function TrophyShowcaseCabinet({
                 disabled={!isInteractive}
                 onClick={trophy ? () => onSelectTrophy?.(trophy) : () => onEmptySlotClick?.()}
                 className={clsx(
-                  'group relative aspect-square overflow-hidden rounded-2xl border-2 border-dashed transition-all',
-                  theme === 'dark' ? 'bg-zinc-950/40' : 'bg-white/80',
+                  'group relative aspect-[0.92] overflow-hidden rounded-2xl border-2 border-dashed transition-all',
+                  theme === 'dark' ? 'bg-zinc-950/45' : 'bg-white/80',
                   trophy
                     ? theme === 'dark'
-                      ? 'border-amber-500/30 hover:border-amber-500/60'
-                      : 'border-amber-500/35 hover:border-amber-500/70 shadow-sm'
+                      ? 'border-amber-500/30 hover:border-amber-400/70'
+                      : 'border-amber-500/35 hover:border-amber-500/75 shadow-sm'
                     : theme === 'dark'
-                      ? 'border-white/6 hover:border-white/12 hover:bg-zinc-950/65'
+                      ? 'border-white/6 hover:border-white/12 hover:bg-zinc-950/70'
                       : 'border-zinc-200 hover:border-zinc-300 hover:bg-white',
                   isInteractive ? 'cursor-pointer hover:-translate-y-0.5' : 'cursor-default',
                 )}
               >
                 {trophy ? (
-                  <div className="h-full w-full p-2">
-                    {displayMode === 'badge' ? (
-                      <TrophyBadge trophy={trophy} theme={theme} language={language} />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-[1.15rem]">
-                        <PrizeIcon rank={trophy.rank} className="h-full w-full" />
-                      </div>
-                    )}
+                  <div className="flex h-full w-full flex-col justify-between p-2">
+                    <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-[1.15rem] bg-black/10">
+                      {displayMode === 'badge' ? (
+                        <TrophyBadge trophy={trophy} theme={theme} language={language} />
+                      ) : (
+                        <PrizeIcon rank={trophy.rank} className="h-full w-full max-h-[88px] max-w-[88px]" />
+                      )}
+                    </div>
 
                     {displayMode === 'icon' ? (
                       <div
                         className={clsx(
-                          'pointer-events-none absolute inset-x-3 bottom-3 rounded-xl border px-2 py-1.5 text-center backdrop-blur-sm',
+                          'pointer-events-none mt-2 rounded-xl border px-1.5 py-1 text-center backdrop-blur-sm',
                           theme === 'dark'
                             ? 'border-white/8 bg-zinc-950/72 text-white'
                             : 'border-white/80 bg-white/78 text-zinc-900',
                         )}
                       >
-                        <div className="line-clamp-1 text-[11px] font-black leading-tight">{trophy.name}</div>
+                        <div className="line-clamp-2 text-[10px] font-black leading-[1.2]">{trophy.name}</div>
                       </div>
                     ) : null}
                   </div>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 px-3 text-center">
+                  <div className="flex h-full flex-col items-center justify-center gap-1.5 px-1.5 text-center">
                     <div
                       className={clsx(
-                        'flex h-14 w-14 items-center justify-center rounded-full border border-dashed transition-colors',
+                        'flex h-10 w-10 items-center justify-center rounded-full border border-dashed transition-colors',
                         theme === 'dark'
-                          ? 'border-white/10 bg-white/5 text-zinc-600 group-hover:text-zinc-400'
+                          ? 'border-white/10 bg-white/5 text-zinc-500 group-hover:text-zinc-300'
                           : 'border-zinc-300 bg-zinc-50 text-zinc-400 group-hover:text-zinc-500',
                       )}
                     >
-                      <Trophy className="h-6 w-6" />
+                      <Trophy className="h-4.5 w-4.5" />
                     </div>
-                    <div className={clsx('text-xs font-bold leading-5', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                    <div className={clsx('text-[10px] font-bold leading-4', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
                       {onEmptySlotClick ? ui.hint : ui.empty}
                     </div>
                   </div>
