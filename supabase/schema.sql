@@ -847,6 +847,61 @@ begin
   return v_profile;
 end;
 $$;
+
+create or replace function public.update_profile_identity(
+  p_session_token text,
+  p_nickname text,
+  p_display_name text,
+  p_avatar_url text default null
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile public.profiles;
+  v_nickname text := left(btrim(coalesce(p_nickname, '')), 24);
+  v_display_name text := left(btrim(coalesce(p_display_name, '')), 40);
+  v_avatar_url text := case
+    when p_avatar_url is null then null
+    else btrim(p_avatar_url)
+  end;
+begin
+  if char_length(v_nickname) < 3 then
+    raise exception 'Nickname must be at least 3 characters.';
+  end if;
+
+  if char_length(v_display_name) = 0 then
+    raise exception 'Display name cannot be empty.';
+  end if;
+
+  if v_avatar_url is not null and char_length(v_avatar_url) > 400000 then
+    raise exception 'Avatar image is too large.';
+  end if;
+
+  v_profile := public.current_profile_from_session(p_session_token, false);
+
+  if exists (
+    select 1
+    from public.profiles
+    where lower(nickname) = lower(v_nickname)
+      and id <> v_profile.id
+  ) then
+    raise exception 'This nickname is already taken.';
+  end if;
+
+  update public.profiles
+  set
+    nickname = v_nickname,
+    display_name = v_display_name,
+    avatar_url = coalesce(v_avatar_url, avatar_url)
+  where id = v_profile.id
+  returning * into v_profile;
+
+  return v_profile;
+end;
+$$;
 create or replace function public.list_profiles_for_user(
   p_session_token text,
   p_search text default null,
@@ -2323,6 +2378,7 @@ grant execute on function public.get_current_profile(text) to anon, authenticate
 grant execute on function public.get_player_profile(text, uuid) to anon, authenticated;
 grant execute on function public.update_profile_preferences(text, text, text, text, jsonb) to anon, authenticated;
 grant execute on function public.rename_profile_display_name(text, text) to anon, authenticated;
+grant execute on function public.update_profile_identity(text, text, text, text) to anon, authenticated;
 grant execute on function public.list_profiles_for_user(text, text, integer) to anon, authenticated;
 grant execute on function public.list_leaderboard_profiles(text) to anon, authenticated;
 grant execute on function public.list_shop_products_for_user(text) to anon, authenticated;

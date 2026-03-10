@@ -20,6 +20,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import ProfileIdentityEditor from '../components/ProfileIdentityEditor';
 import PrizeIcon from '../components/PrizeIcon';
 import ProfileInventorySheet, { type InventoryTab } from '../components/ProfileInventorySheet';
 import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
@@ -29,6 +30,7 @@ import {
   listProfiles,
   listShopProducts,
   purchaseShopItem,
+  updateProfileIdentity,
   updateProfileDisplayName,
   updateProfilePreferences,
 } from '../lib/api';
@@ -85,6 +87,8 @@ export default function Profile() {
   const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
   const [shopLoading, setShopLoading] = useState(false);
   const [inventoryBusy, setInventoryBusy] = useState(false);
+  const [identityEditorOpen, setIdentityEditorOpen] = useState(false);
+  const [identityBusy, setIdentityBusy] = useState(false);
   const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [adminBusyUserId, setAdminBusyUserId] = useState<string | null>(null);
@@ -179,6 +183,29 @@ export default function Profile() {
     } catch (error) {
       console.error('Failed to rename', error);
       alert(t('profile.renameFailed'));
+    }
+  };
+
+  const handleSaveIdentity = async (values: {
+    displayName: string;
+    nickname: string;
+    avatarUrl: string;
+  }) => {
+    setIdentityBusy(true);
+    try {
+      const updatedProfile = await updateProfileIdentity({
+        displayName: values.displayName.trim(),
+        nickname: values.nickname.trim(),
+        avatarUrl: values.avatarUrl,
+      });
+      syncProfile(updatedProfile);
+      setNewName(updatedProfile.displayName);
+      setIdentityEditorOpen(false);
+    } catch (error) {
+      console.error('Failed to update profile identity', error);
+      alert(error instanceof Error && error.message.trim() ? error.message : t('profile.renameFailed'));
+    } finally {
+      setIdentityBusy(false);
     }
   };
 
@@ -334,8 +361,7 @@ export default function Profile() {
                 </h1>
                 <button
                   onClick={() => {
-                    setNewName(userProfile.displayName);
-                    setIsEditingName(true);
+                    setIdentityEditorOpen(true);
                   }}
                   className="text-zinc-500 hover:text-emerald-500 transition-colors p-1 shrink-0"
                 >
@@ -653,6 +679,18 @@ export default function Profile() {
         onPlaceTrophy={(slotId, trophyId) => void handlePlaceTrophy(slotId, trophyId)}
         onSelectTrophy={setSelectedTrophy}
         onPurchase={(productId) => void handlePurchaseProduct(productId)}
+      />
+
+      <ProfileIdentityEditor
+        open={identityEditorOpen}
+        theme={theme}
+        language={language}
+        initialDisplayName={userProfile.displayName}
+        initialNickname={userProfile.nickname}
+        initialAvatarUrl={userProfile.photoURL}
+        busy={identityBusy}
+        onClose={() => setIdentityEditorOpen(false)}
+        onSave={(values) => void handleSaveIdentity(values)}
       />
 
       <AnimatePresence>

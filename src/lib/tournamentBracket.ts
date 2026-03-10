@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   Tournament,
   TournamentBracket,
   TournamentBracketMatch,
@@ -17,6 +17,12 @@ type SubmitTournamentScoreResult = {
 type ForfeitTournamentMatchResult = {
   bracket: TournamentBracket;
   timeline: TournamentTimelineEvent[];
+};
+
+type SetTournamentMatchReadyResult = {
+  bracket: TournamentBracket;
+  timeline: TournamentTimelineEvent[];
+  result: 'pending' | 'ongoing';
 };
 
 type FinalizedTournamentState = {
@@ -115,7 +121,7 @@ const createBracketMatch = (params: {
     slot: params.slot,
     label: params.label ?? getStageDisplayLabel(params.stage, params.slot),
     bestOf: params.bestOf,
-    status: hasResolvedPlayers ? 'ready' : hasWalkoverCandidate ? 'ready' : 'waiting',
+    status: hasResolvedPlayers || hasWalkoverCandidate ? 'pending' : 'waiting',
     player1Id: player1?.uid ?? null,
     player1Name: player1?.displayName ?? '',
     player1AvatarUrl: player1?.photoURL ?? '',
@@ -126,6 +132,8 @@ const createBracketMatch = (params: {
     player2Source: params.player2Source ?? null,
     player1Score: null,
     player2Score: null,
+    player1Ready: false,
+    player2Ready: false,
     player1Confirmed: false,
     player2Confirmed: false,
     winnerId: null,
@@ -161,7 +169,15 @@ const assignPlayerToMatch = (
   }
 
   if (target.status !== 'completed' && target.status !== 'walkover') {
-    target.status = target.player1Id && target.player2Id ? 'ready' : 'waiting';
+    target.player1Ready = false;
+    target.player2Ready = false;
+    target.player1Confirmed = false;
+    target.player2Confirmed = false;
+    target.player1Score = null;
+    target.player2Score = null;
+    target.winnerId = null;
+    target.resolution = null;
+    target.status = target.player1Id && target.player2Id ? 'pending' : 'waiting';
   }
 };
 
@@ -191,6 +207,8 @@ const finalizeMatch = (
   }
 
   match.winnerId = winnerId;
+  match.player1Ready = true;
+  match.player2Ready = true;
   match.player1Confirmed = true;
   match.player2Confirmed = true;
   match.status = resolution === 'walkover' ? 'walkover' : 'completed';
@@ -451,6 +469,69 @@ export const createTournamentBracket = (
   return { bracket, timeline };
 };
 
+export const setTournamentMatchReady = (
+  tournament: Tournament,
+  bracket: TournamentBracket,
+  matchId: string,
+  actorUserId: string,
+): SetTournamentMatchReadyResult => {
+  const nextBracket = cloneBracket(bracket);
+  const nextTimeline: TournamentTimelineEvent[] = [];
+  const match = nextBracket.matches.find((current) => current.id === matchId);
+
+  if (!match) {
+    throw new Error('Tournament match not found.');
+  }
+
+  if (match.status !== 'pending' && match.status !== 'ongoing') {
+    throw new Error('This match cannot be readied right now.');
+  }
+
+  if (!match.player1Id || !match.player2Id) {
+    throw new Error('This match is still waiting for players.');
+  }
+
+  const actorSlot = match.player1Id === actorUserId ? 1 : match.player2Id === actorUserId ? 2 : null;
+  if (!actorSlot) {
+    throw new Error('You are not part of this tournament match.');
+  }
+
+  if (actorSlot === 1) {
+    match.player1Ready = true;
+  } else {
+    match.player2Ready = true;
+  }
+
+  if (match.player1Ready && match.player2Ready) {
+    match.status = 'ongoing';
+    match.player1Confirmed = false;
+    match.player2Confirmed = false;
+    match.player1Score = null;
+    match.player2Score = null;
+    nextTimeline.unshift(
+      createEvent(
+        tournament.id,
+        'match_ready',
+        `${match.label} is ready`,
+        `${match.player1Name || 'Player 1'} and ${match.player2Name || 'Player 2'} are ready to play.`,
+        match.id,
+      ),
+    );
+
+    return {
+      bracket: nextBracket,
+      timeline: nextTimeline,
+      result: 'ongoing',
+    };
+  }
+
+  return {
+    bracket: nextBracket,
+    timeline: nextTimeline,
+    result: 'pending',
+  };
+};
+
 export const submitTournamentMatchScore = (
   tournament: Tournament,
   bracket: TournamentBracket,
@@ -467,8 +548,12 @@ export const submitTournamentMatchScore = (
     throw new Error('Tournament match not found.');
   }
 
-  if (match.status !== 'ready' && match.status !== 'waiting_confirmation') {
+  if (match.status !== 'ongoing' && match.status !== 'waiting_confirmation') {
     throw new Error('This match cannot accept scores right now.');
+  }
+
+  if (!match.player1Ready || !match.player2Ready) {
+    throw new Error('Both players must be ready before reporting scores.');
   }
 
   const actorSlot = match.player1Id === actorUserId ? 1 : match.player2Id === actorUserId ? 2 : null;
@@ -522,7 +607,7 @@ export const submitTournamentMatchScore = (
   match.player2Score = null;
   match.player1Confirmed = false;
   match.player2Confirmed = false;
-  match.status = 'ready';
+  match.status = 'ongoing';
 
   return {
     bracket: nextBracket,
@@ -630,8 +715,9 @@ export const sortTournamentTimeline = (timeline: TournamentTimelineEvent[]) => {
 
 export const getTournamentMatchStatusTone = (status: TournamentMatchStatus) => {
   switch (status) {
-    case 'ready':
+    case 'ongoing':
       return 'emerald';
+    case 'pending':
     case 'waiting_confirmation':
       return 'amber';
     case 'completed':
@@ -643,4 +729,3 @@ export const getTournamentMatchStatusTone = (status: TournamentMatchStatus) => {
 };
 
 export const getTournamentStageHeading = (stage: TournamentStage) => STAGE_LABELS[stage];
-

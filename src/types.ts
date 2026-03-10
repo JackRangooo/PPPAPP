@@ -13,7 +13,8 @@ export type TournamentSource = 'system' | 'admin';
 export type TournamentStage = 'quarterfinal' | 'semifinal' | 'third_place' | 'final';
 export type TournamentMatchStatus =
   | 'waiting'
-  | 'ready'
+  | 'pending'
+  | 'ongoing'
   | 'waiting_confirmation'
   | 'completed'
   | 'walkover';
@@ -119,6 +120,8 @@ export interface TournamentBracketMatch {
   player2Source: string | null;
   player1Score: number | null;
   player2Score: number | null;
+  player1Ready: boolean;
+  player2Ready: boolean;
   player1Confirmed: boolean;
   player2Confirmed: boolean;
   winnerId: string | null;
@@ -139,6 +142,7 @@ export interface TournamentTimelineEvent {
   type:
     | 'registration_opened'
     | 'tournament_started'
+    | 'match_ready'
     | 'match_completed'
     | 'walkover'
     | 'tournament_cancelled'

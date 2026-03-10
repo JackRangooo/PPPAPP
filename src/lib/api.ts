@@ -147,6 +147,8 @@ const mapTournamentBracketMatch = (row: any): TournamentBracketMatch => ({
   player2Source: row.player2Source ?? null,
   player1Score: typeof row.player1Score === 'number' ? row.player1Score : null,
   player2Score: typeof row.player2Score === 'number' ? row.player2Score : null,
+  player1Ready: Boolean(row.player1Ready),
+  player2Ready: Boolean(row.player2Ready),
   player1Confirmed: Boolean(row.player1Confirmed),
   player2Confirmed: Boolean(row.player2Confirmed),
   winnerId: row.winnerId ?? null,
@@ -350,6 +352,20 @@ export const updateProfileDisplayName = async (displayName: string) => {
   const data = await callRpc<any>('rename_profile_display_name', {
     p_session_token: requireSessionToken(),
     p_display_name: displayName,
+  });
+  return mapProfile(data);
+};
+
+export const updateProfileIdentity = async (values: {
+  nickname: string;
+  displayName: string;
+  avatarUrl?: string | null;
+}) => {
+  const data = await callRpc<any>('update_profile_identity', {
+    p_session_token: requireSessionToken(),
+    p_nickname: values.nickname,
+    p_display_name: values.displayName,
+    p_avatar_url: typeof values.avatarUrl === 'undefined' ? null : values.avatarUrl,
   });
   return mapProfile(data);
 };
