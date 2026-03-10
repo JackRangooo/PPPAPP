@@ -314,7 +314,7 @@ const Layout = () => {
   return (
     <div
       className={clsx(
-        'min-h-screen font-sans pb-20 md:pb-0 md:pl-64 transition-colors duration-300',
+        'min-h-screen font-sans pb-28 md:pb-0 md:pl-64 transition-colors duration-300',
         theme === 'dark' ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-50 text-zinc-900',
       )}
     >

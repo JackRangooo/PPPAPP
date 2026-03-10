@@ -153,6 +153,19 @@ export default function Profile() {
       active = false;
     };
   }, [userProfile?.uid, userProfile?.isRoot]);
+  const filteredAdminUsers = useMemo(() => {
+    const searchValue = adminSearch.trim().toLowerCase();
+    if (!searchValue) {
+      return adminUsers;
+    }
+
+    return adminUsers.filter((player) => {
+      return (
+        player.displayName.toLowerCase().includes(searchValue) ||
+        player.nickname.toLowerCase().includes(searchValue)
+      );
+    });
+  }, [adminSearch, adminUsers]);
 
   if (!userProfile) return null;
 
@@ -288,20 +301,6 @@ export default function Profile() {
     userProfile.casualWins + userProfile.casualLosses > 0
       ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
       : 0;
-
-  const filteredAdminUsers = useMemo(() => {
-    const searchValue = adminSearch.trim().toLowerCase();
-    if (!searchValue) {
-      return adminUsers;
-    }
-
-    return adminUsers.filter((player) => {
-      return (
-        player.displayName.toLowerCase().includes(searchValue) ||
-        player.nickname.toLowerCase().includes(searchValue)
-      );
-    });
-  }, [adminSearch, adminUsers]);
 
   return (
     <div className="space-y-8 pb-12">

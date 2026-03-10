@@ -132,25 +132,31 @@ const copy = {
 const bubbleTheme = {
   dark: {
     shell:
-      'border-white/10 bg-zinc-900/55 text-white shadow-[0_24px_60px_rgba(0,0,0,0.42)]',
+      'border-white/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.05))] text-white shadow-[0_26px_70px_rgba(0,0,0,0.42)]',
     panel:
-      'border-white/10 bg-zinc-900/52 text-white shadow-[0_30px_90px_rgba(0,0,0,0.45)]',
-    card: 'border-white/8 bg-zinc-950/48',
-    button: 'border-white/10 bg-white/5 hover:bg-white/10',
+      'border-white/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))] text-white shadow-[0_30px_90px_rgba(0,0,0,0.46)]',
+    card: 'border-white/10 bg-zinc-950/42',
+    button: 'border-white/10 bg-white/6 hover:bg-white/10',
     muted: 'text-zinc-400',
-    input: 'border-white/10 bg-zinc-950/70 text-white',
+    input: 'border-white/10 bg-zinc-950/74 text-white',
+    shine: 'bg-white/18',
+    glow: 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_58%)]',
   },
   light: {
     shell:
-      'border-white/70 bg-white/65 text-zinc-900 shadow-[0_24px_60px_rgba(15,23,42,0.14)]',
+      'border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(255,255,255,0.65))] text-zinc-900 shadow-[0_24px_60px_rgba(15,23,42,0.14)]',
     panel:
-      'border-white/80 bg-white/72 text-zinc-900 shadow-[0_30px_90px_rgba(15,23,42,0.16)]',
-    card: 'border-white/80 bg-white/60',
-    button: 'border-zinc-200/80 bg-white/70 hover:bg-white',
+      'border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,0.72))] text-zinc-900 shadow-[0_28px_80px_rgba(15,23,42,0.16)]',
+    card: 'border-white/90 bg-white/58',
+    button: 'border-zinc-200/80 bg-white/72 hover:bg-white',
     muted: 'text-zinc-500',
-    input: 'border-zinc-200 bg-white/90 text-zinc-900',
+    input: 'border-zinc-200 bg-white/92 text-zinc-900',
+    shine: 'bg-white/90',
+    glow: 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),transparent_58%)]',
   },
 } as const;
+
+const POLL_MS = 1800;
 
 const casualStatusTone = {
   incoming: 'bg-emerald-500/12 text-emerald-500',
@@ -322,27 +328,55 @@ export default function GlobalMessageQueue() {
     }
 
     let active = true;
+    let refreshing = false;
+
     const refresh = async () => {
-      const [nextMatches, nextTournaments] = await Promise.all([
-        listUserActiveCasualMatches(userProfile.uid),
-        listTournaments(),
-      ]);
-      if (!active) {
+      if (!active || refreshing) {
         return;
       }
-      setCasualMatches(nextMatches);
-      setTournaments(nextTournaments);
+
+      refreshing = true;
+
+      try {
+        const [nextMatches, nextTournaments] = await Promise.all([
+          listUserActiveCasualMatches(userProfile.uid),
+          listTournaments(),
+        ]);
+        if (!active) {
+          return;
+        }
+        setCasualMatches(nextMatches);
+        setTournaments(nextTournaments);
+      } finally {
+        refreshing = false;
+      }
     };
 
-    void refresh();
+    const refreshSoon = () => {
+      void refresh();
+    };
 
-    const stopMatches = subscribeToTable('matches', () => void refresh());
-    const stopTournaments = subscribeToTable('tournaments', () => void refresh());
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSoon();
+      }
+    };
+
+    refreshSoon();
+
+    const intervalId = window.setInterval(refreshSoon, POLL_MS);
+    const stopMatches = subscribeToTable('matches', refreshSoon);
+    const stopTournaments = subscribeToTable('tournaments', refreshSoon);
+    window.addEventListener('focus', refreshSoon);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       active = false;
+      window.clearInterval(intervalId);
       stopMatches();
       stopTournaments();
+      window.removeEventListener('focus', refreshSoon);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [userProfile]);
 
@@ -571,13 +605,16 @@ export default function GlobalMessageQueue() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={clsx(
-          'fixed bottom-24 right-4 z-[130] flex h-16 w-16 items-center justify-center rounded-[1.7rem] border backdrop-blur-2xl transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
+          'fixed right-4 z-[130] flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[34px] backdrop-saturate-150 transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
+          'bottom-[calc(env(safe-area-inset-bottom)+6rem)]',
           tones.shell,
         )}
       >
-        <MessageSquareMore className="h-6 w-6" />
+        <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full blur-2xl', tones.shine)} />
+        <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
+        <MessageSquareMore className="relative z-10 h-6 w-6" />
         {queueItems.length > 0 ? (
-          <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-500 px-1 text-[11px] font-black text-zinc-950">
+          <span className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-500 px-1 text-[11px] font-black text-zinc-950">
             {queueItems.length}
           </span>
         ) : null}
@@ -590,10 +627,13 @@ export default function GlobalMessageQueue() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             className={clsx(
-              'fixed bottom-44 right-4 z-[129] w-[min(92vw,420px)] overflow-hidden rounded-[2rem] border backdrop-blur-[28px] md:bottom-28 md:right-8',
+              'fixed right-4 z-[129] w-[min(92vw,420px)] overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-8',
+              'bottom-[calc(env(safe-area-inset-bottom)+11rem)]',
               tones.panel,
             )}
           >
+            <span className={clsx('pointer-events-none absolute inset-x-10 top-2 h-12 rounded-full blur-3xl', tones.shine)} />
+            <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
             <div className={clsx('border-b px-5 py-4', theme === 'dark' ? 'border-white/10' : 'border-white/60')}>
               <div className="flex items-center justify-between gap-3">
                 <div>

@@ -23,15 +23,15 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
-
   const submitLabel = useMemo(() => {
     if (loading && mode === 'login') return t('login.loggingIn');
     if (loading && mode === 'register') return t('login.creatingAccount');
     return mode === 'login' ? t('login.loginAction') : t('login.registerAction');
   }, [loading, mode, t]);
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const validate = () => {
     const trimmedNickname = nickname.trim();
@@ -86,7 +86,7 @@ export default function Login() {
   return (
     <div
       className={clsx(
-        'min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden transition-colors duration-300',
+        'relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6 transition-colors duration-300',
         theme === 'dark' ? 'bg-zinc-950' : 'bg-zinc-50',
       )}
     >
@@ -103,27 +103,37 @@ export default function Login() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 flex flex-col items-center max-w-md w-full"
+        className="relative z-10 flex w-full max-w-md flex-col items-center"
       >
         <div
           className={clsx(
-            'w-24 h-24 rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(16,185,129,0.2)]',
+            'mb-8 flex h-24 w-24 items-center justify-center rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.2)]',
             theme === 'dark'
-              ? 'bg-emerald-500/10 border border-emerald-500/20'
-              : 'bg-white border border-emerald-200',
+              ? 'border border-emerald-500/20 bg-emerald-500/10'
+              : 'border border-emerald-200 bg-white',
           )}
         >
-          <Logo className={clsx('w-14 h-14', theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500')} />
+          <Logo className={clsx('h-14 w-14', theme === 'dark' ? 'text-emerald-400' : 'text-emerald-500')} />
         </div>
 
-        <h1 className={clsx('text-4xl font-bold tracking-tighter mb-3 text-center', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+        <h1
+          className={clsx(
+            'mb-3 text-center text-4xl font-bold tracking-tighter',
+            theme === 'dark' ? 'text-white' : 'text-zinc-900',
+          )}
+        >
           PingProPrivate
         </h1>
-        <p className={clsx('text-center mb-8 font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+        <p className={clsx('mb-8 text-center font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
           {t('login.subtitle')}
         </p>
 
-        <div className={clsx('w-full p-1 rounded-2xl border mb-6', theme === 'dark' ? 'bg-zinc-900/80 border-white/10' : 'bg-white border-zinc-200 shadow-sm')}>
+        <div
+          className={clsx(
+            'mb-6 w-full rounded-2xl border p-1',
+            theme === 'dark' ? 'border-white/10 bg-zinc-900/80' : 'border-zinc-200 bg-white shadow-sm',
+          )}
+        >
           <div className="grid grid-cols-2 gap-1">
             <button
               type="button"
@@ -132,7 +142,7 @@ export default function Login() {
                 setError('');
               }}
               className={clsx(
-                'py-3 rounded-xl text-sm font-bold transition-all',
+                'rounded-xl py-3 text-sm font-bold transition-all',
                 mode === 'login'
                   ? 'bg-emerald-500 text-zinc-950'
                   : theme === 'dark'
@@ -149,7 +159,7 @@ export default function Login() {
                 setError('');
               }}
               className={clsx(
-                'py-3 rounded-xl text-sm font-bold transition-all',
+                'rounded-xl py-3 text-sm font-bold transition-all',
                 mode === 'register'
                   ? 'bg-amber-500 text-zinc-950'
                   : theme === 'dark'
@@ -169,13 +179,13 @@ export default function Login() {
             </span>
             <div
               className={clsx(
-                'flex items-center gap-3 px-4 py-4 rounded-2xl border transition-colors',
+                'flex items-center gap-3 rounded-2xl border px-4 py-4 transition-colors',
                 theme === 'dark'
-                  ? 'bg-zinc-900/60 border-white/10 text-white'
-                  : 'bg-white border-zinc-200 text-zinc-900 shadow-sm',
+                  ? 'border-white/10 bg-zinc-900/60 text-white'
+                  : 'border-zinc-200 bg-white text-zinc-900 shadow-sm',
               )}
             >
-              <UserRound className="w-5 h-5 text-emerald-500" />
+              <UserRound className="h-5 w-5 text-emerald-500" />
               <input
                 type="text"
                 value={nickname}
@@ -197,13 +207,13 @@ export default function Login() {
             </span>
             <div
               className={clsx(
-                'flex items-center gap-3 px-4 py-4 rounded-2xl border transition-colors',
+                'flex items-center gap-3 rounded-2xl border px-4 py-4 transition-colors',
                 theme === 'dark'
-                  ? 'bg-zinc-900/60 border-white/10 text-white'
-                  : 'bg-white border-zinc-200 text-zinc-900 shadow-sm',
+                  ? 'border-white/10 bg-zinc-900/60 text-white'
+                  : 'border-zinc-200 bg-white text-zinc-900 shadow-sm',
               )}
             >
-              <KeyRound className="w-5 h-5 text-emerald-500" />
+              <KeyRound className="h-5 w-5 text-emerald-500" />
               <input
                 type="password"
                 value={password}
@@ -225,13 +235,13 @@ export default function Login() {
               </span>
               <div
                 className={clsx(
-                  'flex items-center gap-3 px-4 py-4 rounded-2xl border transition-colors',
+                  'flex items-center gap-3 rounded-2xl border px-4 py-4 transition-colors',
                   theme === 'dark'
-                    ? 'bg-zinc-900/60 border-white/10 text-white'
-                    : 'bg-white border-zinc-200 text-zinc-900 shadow-sm',
+                    ? 'border-white/10 bg-zinc-900/60 text-white'
+                    : 'border-zinc-200 bg-white text-zinc-900 shadow-sm',
                 )}
               >
-                <KeyRound className="w-5 h-5 text-amber-500" />
+                <KeyRound className="h-5 w-5 text-amber-500" />
                 <input
                   type="password"
                   value={confirmPassword}
@@ -253,11 +263,11 @@ export default function Login() {
             className={clsx(
               'rounded-2xl border p-4 text-sm font-medium',
               theme === 'dark'
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                : 'bg-emerald-50 border-emerald-200 text-emerald-700',
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-700',
             )}
           >
-            <div className="font-bold mb-1">{t('login.localFirstTitle')}</div>
+            <div className="mb-1 font-bold">{t('login.localFirstTitle')}</div>
             <div>{t(mode === 'login' ? 'login.loginHint' : 'login.registerHint')}</div>
           </div>
 
@@ -265,7 +275,7 @@ export default function Login() {
             type="submit"
             disabled={loading}
             className={clsx(
-              'w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-semibold text-lg transition-colors active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed',
+              'flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 text-lg font-semibold transition-colors active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60',
               mode === 'login'
                 ? theme === 'dark'
                   ? 'bg-white text-zinc-950 hover:bg-zinc-200'
@@ -273,7 +283,7 @@ export default function Login() {
                 : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 shadow-md',
             )}
           >
-            <LogIn className="w-5 h-5" />
+            <LogIn className="h-5 w-5" />
             {submitLabel}
           </button>
         </form>
@@ -281,4 +291,3 @@ export default function Login() {
     </div>
   );
 }
-
