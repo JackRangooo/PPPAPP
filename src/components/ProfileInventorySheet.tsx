@@ -1,4 +1,4 @@
-import { Check as CheckIcon, Coins, Info, Package, ShoppingBag, Trophy, X } from 'lucide-react';
+import { Check as CheckIcon, Coins, Info, Package, ShoppingBag, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
@@ -49,8 +49,8 @@ const copy = {
     titles: '称号',
     items: '道具',
     shop: '商店',
-    winToEarn: '赢下锦标赛来获得奖杯。',
-    noItems: '购买后的卡牌和道具会显示在这里。',
+    winToEarn: '赢下锦标赛即可获得奖杯。',
+    noItems: '购买后的技能卡和道具会显示在这里。',
     noShopItems: '商店里暂时还没有上架商品。',
     remove: '取下',
     display: '展示',
@@ -63,9 +63,47 @@ const copy = {
   },
 } as const;
 
+const kindLabels = {
+  en: {
+    card: 'Card',
+  },
+  zh: {
+    card: '技能卡',
+  },
+} as const;
+
+const productLocalization = {
+  select_card: {
+    en: {
+      name: 'Self-Select Card',
+      description: 'Choose your first-round opponent in a future tournament. This version only supports buying and storing it.',
+      effectHint: 'Future: choose a first-round opponent',
+    },
+    zh: {
+      name: '自选卡',
+      description: '未来可在锦标赛中指定第一轮对手。当前版本仅支持购买和入库，效果暂未开放。',
+      effectHint: '未来可指定第一轮对手',
+    },
+  },
+} as const;
+
 const getOwnedQuantity = (items: InventoryItem[], productId: string) => {
   const item = items.find((currentItem) => currentItem.productId === productId);
   return item?.quantity ?? 0;
+};
+
+const getLocalizedItemContent = (
+  item: Pick<InventoryItem, 'productId' | 'name' | 'description' | 'kind' | 'effectHint'>,
+  language: Language,
+) => {
+  const localized = productLocalization[item.productId as keyof typeof productLocalization]?.[language];
+
+  return {
+    name: localized?.name ?? item.name,
+    description: localized?.description ?? item.description,
+    effectHint: localized?.effectHint ?? item.effectHint,
+    kindLabel: kindLabels[language][item.kind] ?? item.kind,
+  };
 };
 
 export default function ProfileInventorySheet({
@@ -85,6 +123,7 @@ export default function ProfileInventorySheet({
   onPurchase,
 }: ProfileInventorySheetProps) {
   const ui = copy[language];
+  const priceUnit = language === 'zh' ? '金币' : 'coins';
 
   return (
     <AnimatePresence>
@@ -225,30 +264,37 @@ export default function ProfileInventorySheet({
 
             {inventoryTab === 'items' ? (
               <div className="space-y-3">
-                {(userProfile.inventory?.items || []).map((item) => (
-                  <div
-                    key={item.productId}
-                    className={clsx(
-                      'rounded-2xl border p-4 flex items-start justify-between gap-4',
-                      theme === 'dark' ? 'bg-zinc-950 border-white/5' : 'bg-zinc-50 border-zinc-200',
-                    )}
-                  >
-                    <div className="min-w-0">
-                      <div className={clsx('font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                        {item.name}
+                {(userProfile.inventory?.items || []).map((item) => {
+                  const content = getLocalizedItemContent(item, language);
+
+                  return (
+                    <div
+                      key={item.productId}
+                      className={clsx(
+                        'rounded-2xl border p-4 flex items-start justify-between gap-4',
+                        theme === 'dark' ? 'bg-zinc-950 border-white/5' : 'bg-zinc-50 border-zinc-200',
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className={clsx('font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                          {content.name}
+                        </div>
+                        <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-emerald-500">
+                          {content.kindLabel}
+                        </div>
+                        <div className={clsx('text-sm mt-2 leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
+                          {content.description}
+                        </div>
+                        <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-500">
+                          {content.effectHint || ui.comingSoon}
+                        </div>
                       </div>
-                      <div className={clsx('text-sm mt-1 leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
-                        {item.description}
-                      </div>
-                      <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-500">
-                        {item.effectHint || ui.comingSoon}
+                      <div className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
+                        x{item.quantity}
                       </div>
                     </div>
-                    <div className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')}>
-                      x{item.quantity}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {(!userProfile.inventory?.items || userProfile.inventory.items.length === 0) ? (
                   <div className="py-12 text-center text-zinc-500 font-medium">{ui.noItems}</div>
@@ -271,6 +317,16 @@ export default function ProfileInventorySheet({
                     {shopProducts.map((product) => {
                       const owned = getOwnedQuantity(userProfile.inventory?.items || [], product.id);
                       const canAfford = userProfile.coins >= product.priceCoins;
+                      const content = getLocalizedItemContent(
+                        {
+                          productId: product.id,
+                          name: product.name,
+                          description: product.description,
+                          kind: product.kind,
+                          effectHint: product.effectHint,
+                        },
+                        language,
+                      );
 
                       return (
                         <div
@@ -287,19 +343,19 @@ export default function ProfileInventorySheet({
                               </div>
                               <div>
                                 <div className={clsx('font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                                  {product.name}
+                                  {content.name}
                                 </div>
                                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-500">
-                                  {product.kind}
+                                  {content.kindLabel}
                                 </div>
                               </div>
                             </div>
 
                             <div className={clsx('text-sm mt-4 leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
-                              {product.description}
+                              {content.description}
                             </div>
                             <div className="mt-2 text-xs font-bold uppercase tracking-[0.16em] text-amber-500">
-                              {product.effectHint || ui.comingSoon}
+                              {content.effectHint || ui.comingSoon}
                             </div>
                           </div>
 
@@ -315,7 +371,7 @@ export default function ProfileInventorySheet({
                                 canAfford ? 'bg-amber-500 hover:bg-amber-400 text-zinc-950' : 'bg-zinc-700 text-zinc-300',
                               )}
                             >
-                              {ui.buy} · {product.priceCoins}
+                              {ui.buy} {product.priceCoins} {priceUnit}
                             </button>
                           </div>
                         </div>

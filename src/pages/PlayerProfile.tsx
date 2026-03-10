@@ -103,6 +103,7 @@ export default function PlayerProfile() {
           theme={theme}
           slots={player.showcase || []}
           trophies={player.inventory?.trophies || []}
+          displayMode="badge"
           onSelectTrophy={setSelectedTrophy}
         />
       </section>
