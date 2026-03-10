@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#052e2b" />
+      <stop offset="0.56" stop-color="#064e3b" />
+      <stop offset="1" stop-color="#022c22" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(388 114) rotate(124.216) scale(184.338)">
+      <stop stop-color="#6ee7b7" />
+      <stop offset="1" stop-color="#6ee7b7" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)" />
+  <rect x="46" y="46" width="420" height="420" rx="108" fill="#020617" fill-opacity="0.82" stroke="#34d399" stroke-opacity="0.18" stroke-width="2" />
+  <circle cx="388" cy="114" r="102" fill="url(#glow)" opacity="0.72" />
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(-26 0)" opacity="0.34">
+      <path d="M184 382V148a72 72 0 1 1 0 144" stroke="#34d399" stroke-width="32" />
+      <circle cx="218" cy="220" r="18" fill="#34d399" />
+    </g>
+    <g transform="translate(32 0)" opacity="0.62">
+      <path d="M184 382V148a72 72 0 1 1 0 144" stroke="#6ee7b7" stroke-width="32" />
+      <circle cx="218" cy="220" r="18" fill="#6ee7b7" />
+    </g>
+    <g transform="translate(90 0)">
+      <path d="M184 382V148a72 72 0 1 1 0 144" stroke="#ecfdf5" stroke-width="32" />
+      <circle cx="218" cy="220" r="18" fill="#ecfdf5" />
+    </g>
+  </g>
+</svg>
