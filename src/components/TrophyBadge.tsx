@@ -1,7 +1,7 @@
-﻿import { Award, Crown, Medal } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { Language, Theme, Trophy as TrophyType } from '../types';
+import PrizeIcon from './PrizeIcon';
 
 type TrophyBadgeProps = {
   trophy: TrophyType;
@@ -9,64 +9,59 @@ type TrophyBadgeProps = {
   language: Language;
 };
 
-const getRankMeta = (rank: number, language: Language) => {
-  if (rank === 1) {
-    return {
-      label: language === 'zh' ? '金' : 'Gold',
-      icon: Crown,
-      shell: 'from-amber-300/85 via-yellow-200/75 to-orange-300/80 border-amber-300/70',
-      iconWrap: 'bg-white/80 border-amber-200/80 text-amber-500',
-      badge: 'bg-amber-950/90 text-amber-100 border-amber-300/30',
-    };
-  }
-
-  if (rank === 2) {
-    return {
-      label: language === 'zh' ? '银' : 'Silver',
-      icon: Medal,
-      shell: 'from-slate-200/90 via-zinc-100/85 to-slate-300/80 border-slate-300/80',
-      iconWrap: 'bg-white/80 border-slate-200/80 text-slate-500',
-      badge: 'bg-slate-900/90 text-slate-100 border-slate-300/30',
-    };
-  }
-
-  return {
-    label: language === 'zh' ? '铜' : 'Bronze',
-    icon: Award,
-    shell: 'from-orange-300/85 via-amber-200/80 to-amber-400/75 border-orange-300/70',
-    iconWrap: 'bg-white/80 border-orange-200/80 text-orange-600',
-    badge: 'bg-orange-950/90 text-orange-100 border-orange-300/30',
-  };
-};
+const rankMeta = {
+  1: {
+    labelEn: 'Champion',
+    labelZh: '冠军',
+    shell: 'from-amber-100 via-yellow-200 to-orange-300',
+    line: 'border-amber-300/80',
+    text: 'text-amber-950',
+    chip: 'bg-amber-950 text-amber-100',
+  },
+  2: {
+    labelEn: 'Runner-Up',
+    labelZh: '亚军',
+    shell: 'from-slate-100 via-slate-200 to-zinc-300',
+    line: 'border-slate-300/90',
+    text: 'text-slate-900',
+    chip: 'bg-slate-900 text-slate-100',
+  },
+  3: {
+    labelEn: 'Third',
+    labelZh: '季军',
+    shell: 'from-orange-100 via-amber-200 to-orange-300',
+    line: 'border-orange-300/80',
+    text: 'text-orange-950',
+    chip: 'bg-orange-950 text-orange-100',
+  },
+} as const;
 
 export default function TrophyBadge({ trophy, theme, language }: TrophyBadgeProps) {
-  const meta = getRankMeta(trophy.rank, language);
-  const Icon = meta.icon;
+  const meta = rankMeta[trophy.rank as 1 | 2 | 3] ?? rankMeta[3];
+  const rankLabel = language === 'zh' ? meta.labelZh : meta.labelEn;
 
   return (
     <div
       className={clsx(
-        'relative h-full w-full overflow-hidden rounded-[1.15rem] border p-3 text-left',
+        'relative h-full w-full overflow-hidden rounded-[1.2rem] border p-3 text-left',
+        `bg-gradient-to-br ${meta.shell} ${meta.line}`,
         theme === 'dark'
-          ? `bg-gradient-to-br ${meta.shell} shadow-[0_18px_35px_rgba(0,0,0,0.28)]`
-          : `bg-gradient-to-br ${meta.shell} shadow-[0_12px_28px_rgba(15,23,42,0.12)]`,
+          ? 'shadow-[0_18px_35px_rgba(0,0,0,0.34)]'
+          : 'shadow-[0_14px_30px_rgba(15,23,42,0.12)]',
       )}
     >
-      <div className="absolute inset-x-0 top-0 h-10 bg-white/20 blur-2xl" />
+      <div className="absolute inset-x-0 top-0 h-12 bg-white/30 blur-2xl" />
       <div className="relative z-10 flex h-full flex-col justify-between gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className={clsx('flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm', meta.iconWrap)}>
-            <Icon className="h-5 w-5" />
-          </div>
-          <span className={clsx('rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]', meta.badge)}>
-            {meta.label}
+        <div className="flex items-start justify-between gap-3">
+          <PrizeIcon rank={trophy.rank} className="h-12 w-12 shrink-0" />
+          <span className={clsx('rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]', meta.chip)}>
+            {rankLabel}
           </span>
         </div>
-        <div>
-          <div className={clsx('min-h-[2.6rem] text-[11px] font-black leading-tight', theme === 'dark' ? 'text-zinc-950' : 'text-zinc-900')}>
-            {trophy.name}
-          </div>
-          <div className={clsx('mt-1 text-[10px] font-semibold leading-tight', theme === 'dark' ? 'text-zinc-800/80' : 'text-zinc-700')}>
+
+        <div className={clsx('rounded-2xl border border-black/8 bg-white/35 p-3 backdrop-blur-sm', meta.text)}>
+          <div className="text-[11px] font-black leading-tight line-clamp-2">{trophy.name}</div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] opacity-80 line-clamp-2">
             {trophy.tournamentName}
           </div>
         </div>

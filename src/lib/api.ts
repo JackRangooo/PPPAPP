@@ -4,6 +4,7 @@ import type {
   AuthPayload,
   Language,
   Match,
+  ShopProduct,
   SubmitMatchScoreResult,
   Theme,
   Tournament,
@@ -23,6 +24,7 @@ const DEFAULT_SHOWCASE = [
 const DEFAULT_INVENTORY = {
   trophies: [],
   titles: ['Novice Player'],
+  items: [],
 };
 
 const DEFAULT_THEME: Theme = 'dark';
@@ -76,12 +78,28 @@ const mapProfile = (row: any): UserProfile => ({
   rankedLosses: row.ranked_losses ?? 0,
   averageRank: row.average_rank ?? 0,
   tournamentsPlayed: row.tournaments_played ?? 0,
+  coins: row.coins ?? 0,
   inventory: {
     trophies: Array.isArray(row.inventory?.trophies) ? row.inventory.trophies : [],
     titles:
       Array.isArray(row.inventory?.titles) && row.inventory.titles.length > 0
         ? row.inventory.titles
         : DEFAULT_INVENTORY.titles,
+    items:
+      Array.isArray(row.inventory?.items) && row.inventory.items.length > 0
+        ? row.inventory.items
+            .map((item: any) => ({
+              productId: item.productId ?? item.product_id ?? '',
+              name: item.name ?? item.productId ?? item.product_id ?? 'Item',
+              description: item.description ?? '',
+              kind: item.kind ?? 'card',
+              quantity: Number(item.quantity ?? 0),
+              priceCoins: Number(item.priceCoins ?? item.price_coins ?? 0),
+              effectHint: item.effectHint ?? item.effect_hint ?? '',
+              effectStatus: item.effectStatus ?? item.effect_status ?? 'coming_soon',
+            }))
+            .filter((item: UserProfile['inventory']['items'][number]) => item.productId && item.quantity > 0)
+        : DEFAULT_INVENTORY.items,
   },
   showcase: Array.isArray(row.showcase) && row.showcase.length > 0 ? row.showcase : DEFAULT_SHOWCASE,
   selectedTitle: row.selected_title ?? 'Novice Player',
@@ -182,6 +200,16 @@ const mapTournamentComment = (row: any): TournamentMatchComment => ({
   authorAvatarUrl: row.author_avatar_url ?? row.authorAvatarUrl ?? '',
   body: row.body ?? '',
   createdAt: row.created_at ?? row.createdAt ?? new Date().toISOString(),
+});
+
+const mapShopProduct = (row: any): ShopProduct => ({
+  id: row.id,
+  name: row.name ?? row.id ?? 'Item',
+  description: row.description ?? '',
+  kind: row.kind ?? 'card',
+  priceCoins: Number(row.price_coins ?? row.priceCoins ?? 0),
+  effectHint: row.effect_hint ?? row.effectHint ?? '',
+  effectStatus: row.effect_status ?? row.effectStatus ?? 'coming_soon',
 });
 
 const mapSession = (row: any): AppSession => ({
@@ -329,7 +357,7 @@ export const listProfiles = async (excludeUserId?: string) => {
   const data = await callRpc<any[]>('list_profiles_for_user', {
     p_session_token: requireSessionToken(),
     p_search: null,
-    p_limit: 100,
+    p_limit: 200,
   });
   return (data ?? []).map(mapProfile).filter((profile) => profile.uid !== excludeUserId);
 };
@@ -506,4 +534,28 @@ export const createTournamentMatchComment = async (
     p_body: body,
   });
   return mapTournamentComment(data);
+};
+
+export const listShopProducts = async () => {
+  const data = await callRpc<any[]>('list_shop_products_for_user', {
+    p_session_token: requireSessionToken(),
+  });
+  return (data ?? []).map(mapShopProduct);
+};
+
+export const purchaseShopItem = async (productId: string) => {
+  const data = await callRpc<any>('purchase_shop_item', {
+    p_session_token: requireSessionToken(),
+    p_product_id: productId,
+    p_quantity: 1,
+  });
+  return mapProfile(data);
+};
+
+export const adminResetUserProgress = async (userId: string) => {
+  const data = await callRpc<any>('admin_reset_user_progress', {
+    p_session_token: requireSessionToken(),
+    p_user_id: userId,
+  });
+  return mapProfile(data);
 };

@@ -1,42 +1,157 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Check as CheckIcon,
+  Coins,
   Edit2,
-  Info,
   LogOut,
   Moon,
   Package,
+  Search,
   Settings,
+  ShieldAlert,
   Star,
   Sun,
   Trophy,
+  Trash2,
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
-import TrophyBadge from '../components/TrophyBadge';
-import { updateProfileDisplayName, updateProfilePreferences } from '../lib/api';
-import type { Trophy as TrophyType } from '../types';
+import PrizeIcon from '../components/PrizeIcon';
+import ProfileInventorySheet, { type InventoryTab } from '../components/ProfileInventorySheet';
+import {
+  adminResetUserProgress,
+  listProfiles,
+  listShopProducts,
+  purchaseShopItem,
+  updateProfileDisplayName,
+  updateProfilePreferences,
+} from '../lib/api';
+import type { ShopProduct, Trophy as TrophyType, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
+
+const adminCopy = {
+  en: {
+    title: 'Admin Control',
+    subtitle: 'Reset a player back to a clean account state. This also wipes their match history and revokes active sessions.',
+    searchPlaceholder: 'Search players to reset...',
+    noUsers: 'No other players found.',
+    resetAction: 'Reset User',
+    resetConfirm: 'Reset this player? Their stats, coins, inventory, sessions, and match records will be cleared.',
+    resetSuccess: 'Player data was cleared.',
+    resetFailed: 'Could not reset this player.',
+    rootBadge: 'Root Admin',
+    openShop: 'Open Shop',
+    openBackpack: 'Open Backpack',
+  },
+  zh: {
+    title: '管理员控制台',
+    subtitle: '把某个玩家重置回干净账号状态，同时清掉比赛记录并注销该用户当前会话。',
+    searchPlaceholder: '搜索要重置的玩家...',
+    noUsers: '暂时没有其他玩家。',
+    resetAction: '清除数据',
+    resetConfirm: '确认重置这个玩家吗？他的积分、金币、背包、会话和比赛记录都会被清空。',
+    resetSuccess: '玩家数据已清除。',
+    resetFailed: '清除玩家数据失败。',
+    rootBadge: 'Root 管理员',
+    openShop: '打开商店',
+    openBackpack: '打开背包',
+  },
+} as const;
 
 export default function Profile() {
   const { userProfile, logOut, theme, toggleTheme, language, setLanguage, syncProfile } = useAuth();
   const t = useTranslation(language);
+  const adminUi = adminCopy[language];
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
   const [selectedTrophy, setSelectedTrophy] = useState<TrophyType | null>(null);
-  const [inventoryTab, setInventoryTab] = useState<'trophies' | 'titles'>('trophies');
+  const [inventoryTab, setInventoryTab] = useState<InventoryTab>('trophies');
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState('');
+  const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
+  const [shopLoading, setShopLoading] = useState(false);
+  const [inventoryBusy, setInventoryBusy] = useState(false);
+  const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminBusyUserId, setAdminBusyUserId] = useState<string | null>(null);
 
   useEffect(() => {
     setNewName(userProfile?.displayName ?? '');
   }, [userProfile?.displayName]);
 
+  useEffect(() => {
+    if (!userProfile) {
+      return;
+    }
+
+    let active = true;
+
+    const loadShopProducts = async () => {
+      setShopLoading(true);
+      try {
+        const products = await listShopProducts();
+        if (active) {
+          setShopProducts(products);
+        }
+      } catch (error) {
+        console.error('Failed to load shop products', error);
+      } finally {
+        if (active) {
+          setShopLoading(false);
+        }
+      }
+    };
+
+    void loadShopProducts();
+
+    return () => {
+      active = false;
+    };
+  }, [userProfile?.uid]);
+
+  useEffect(() => {
+    if (!userProfile?.isRoot) {
+      setAdminUsers([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadAdminUsers = async () => {
+      try {
+        const profiles = await listProfiles(userProfile.uid);
+        if (active) {
+          setAdminUsers(profiles);
+        }
+      } catch (error) {
+        console.error('Failed to load admin player list', error);
+      }
+    };
+
+    void loadAdminUsers();
+
+    return () => {
+      active = false;
+    };
+  }, [userProfile?.uid, userProfile?.isRoot]);
+
   if (!userProfile) return null;
+
+  const loadAdminUsers = async () => {
+    if (!userProfile.isRoot) {
+      return;
+    }
+
+    try {
+      setAdminUsers(await listProfiles(userProfile.uid));
+    } catch (error) {
+      console.error('Failed to refresh admin player list', error);
+    }
+  };
 
   const handleRename = async () => {
     const trimmed = newName.trim();
@@ -78,10 +193,55 @@ export default function Profile() {
     }
   };
 
+  const handlePurchaseProduct = async (productId: string) => {
+    setInventoryBusy(true);
+    try {
+      const updatedProfile = await purchaseShopItem(productId);
+      syncProfile(updatedProfile);
+    } catch (error) {
+      console.error('Failed to purchase shop item', error);
+      alert(error instanceof Error ? error.message : 'Purchase failed.');
+    } finally {
+      setInventoryBusy(false);
+    }
+  };
+
+  const handleAdminReset = async (targetUser: UserProfile) => {
+    if (!window.confirm(adminUi.resetConfirm)) {
+      return;
+    }
+
+    setAdminBusyUserId(targetUser.uid);
+    try {
+      await adminResetUserProgress(targetUser.uid);
+      await loadAdminUsers();
+      alert(adminUi.resetSuccess);
+    } catch (error) {
+      console.error('Failed to reset player', error);
+      alert(error instanceof Error && error.message.trim() ? error.message : adminUi.resetFailed);
+    } finally {
+      setAdminBusyUserId(null);
+    }
+  };
+
   const casualWinRate =
     userProfile.casualWins + userProfile.casualLosses > 0
       ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
       : 0;
+
+  const filteredAdminUsers = useMemo(() => {
+    const searchValue = adminSearch.trim().toLowerCase();
+    if (!searchValue) {
+      return adminUsers;
+    }
+
+    return adminUsers.filter((player) => {
+      return (
+        player.displayName.toLowerCase().includes(searchValue) ||
+        player.nickname.toLowerCase().includes(searchValue)
+      );
+    });
+  }, [adminSearch, adminUsers]);
 
   return (
     <div className="space-y-8 pb-12">
@@ -150,8 +310,17 @@ export default function Profile() {
                 </button>
               </div>
             )}
-            <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold uppercase tracking-widest">
-              {userProfile.selectedTitle || t('profile.novicePlayer')}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold uppercase tracking-widest">
+                {userProfile.selectedTitle || t('profile.novicePlayer')}
+              </div>
+              {userProfile.isRoot ? (
+                <div className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  {adminUi.rootBadge}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -169,13 +338,31 @@ export default function Profile() {
       </header>
 
       <section className="relative">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3">
           <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             <Trophy className="w-5 h-5 text-amber-500" /> {t('profile.showcase')}
           </h2>
-          <button onClick={() => setIsInventoryOpen(true)} className="text-sm text-emerald-500 font-bold flex items-center gap-1 hover:text-emerald-400">
-            <Package className="w-4 h-4" /> {t('profile.backpack')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setInventoryTab('shop');
+                setIsInventoryOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-2 text-amber-500 font-black text-sm"
+            >
+              <Coins className="w-4 h-4" />
+              {userProfile.coins}
+            </button>
+            <button
+              onClick={() => {
+                setInventoryTab('trophies');
+                setIsInventoryOpen(true);
+              }}
+              className="text-sm text-emerald-500 font-bold flex items-center gap-1 hover:text-emerald-400"
+            >
+              <Package className="w-4 h-4" /> {t('profile.backpack')}
+            </button>
+          </div>
         </div>
 
         <div className={clsx('border-x-8 border-t-8 rounded-t-3xl p-6 shadow-2xl relative', theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-zinc-100 border-zinc-300')}>
@@ -199,7 +386,7 @@ export default function Profile() {
                 >
                   {trophy ? (
                     <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="h-full w-full p-2">
-                      <TrophyBadge trophy={trophy} theme={theme} language={language} />
+                      <PrizeIcon rank={trophy.rank} className="h-full w-full" />
                     </motion.div>
                   ) : (
                     <div className="text-zinc-700 group-hover:text-zinc-500 transition-colors">
@@ -240,6 +427,83 @@ export default function Profile() {
           <div className="text-xs text-zinc-500 font-medium mt-1">{t('profile.avgRank')}: #{userProfile.averageRank || '-'}</div>
         </div>
       </div>
+
+      {userProfile.isRoot ? (
+        <section className={clsx('border rounded-[2rem] p-6 space-y-5', theme === 'dark' ? 'bg-zinc-900/60 border-amber-500/20' : 'bg-white border-amber-200 shadow-sm')}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-amber-500 mb-3">
+                <ShieldAlert className="w-4 h-4" />
+                {adminUi.title}
+              </div>
+              <h2 className={clsx('text-xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                {adminUi.title}
+              </h2>
+              <p className={clsx('text-sm mt-2 max-w-2xl leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
+                {adminUi.subtitle}
+              </p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              value={adminSearch}
+              onChange={(event) => setAdminSearch(event.target.value)}
+              placeholder={adminUi.searchPlaceholder}
+              className={clsx(
+                'w-full rounded-2xl border py-3 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-amber-500/30',
+                theme === 'dark'
+                  ? 'bg-zinc-950 border-white/8 text-white placeholder:text-zinc-600'
+                  : 'bg-zinc-50 border-zinc-200 text-zinc-900 placeholder:text-zinc-400',
+              )}
+            />
+          </div>
+
+          <div className="space-y-3">
+            {filteredAdminUsers.length === 0 ? (
+              <div className="py-10 text-center text-zinc-500 font-medium">{adminUi.noUsers}</div>
+            ) : (
+              filteredAdminUsers.map((player) => (
+                <div
+                  key={player.uid}
+                  className={clsx(
+                    'rounded-2xl border p-4 flex items-center justify-between gap-4',
+                    theme === 'dark' ? 'bg-zinc-950/70 border-white/6' : 'bg-zinc-50 border-zinc-200',
+                  )}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={player.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.displayName)}&background=random`}
+                      alt={player.displayName}
+                      className="w-11 h-11 rounded-full shrink-0 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="min-w-0">
+                      <div className={clsx('font-black truncate', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                        {player.displayName}
+                      </div>
+                      <div className={clsx('text-xs font-medium mt-1 truncate', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                        @{player.nickname} · {player.coins} coins · {player.rankedPoints} pts
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => void handleAdminReset(player)}
+                    disabled={adminBusyUserId === player.uid}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-red-500 font-black hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {adminUi.resetAction}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <AnimatePresence>
         {isSettingsOpen ? (
@@ -352,156 +616,28 @@ export default function Profile() {
                 </section>
               </div>
 
-              <div className="text-center text-[10px] text-zinc-600 font-medium">PingProPrivate v2.0.0</div>
+              <div className="text-center text-[10px] text-zinc-600 font-medium">PingProPrivate v2.1.0</div>
             </motion.div>
           </>
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isInventoryOpen ? (
-          <div className="fixed inset-0 z-[80] flex items-end justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsInventoryOpen(false)} className="fixed inset-0 bg-black/80 backdrop-blur-md" />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className={clsx('relative w-full max-w-lg rounded-t-[40px] p-8 max-h-[80vh] overflow-y-auto', theme === 'dark' ? 'bg-zinc-900' : 'bg-white')}
-            >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                    <Package className="w-6 h-6 text-emerald-500" />
-                  </div>
-                  <h2 className={clsx('text-2xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                    {t('profile.backpack')}
-                  </h2>
-                </div>
-                <button onClick={() => setIsInventoryOpen(false)} className="text-zinc-500 hover:text-emerald-500">
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="flex gap-4 mb-8">
-                <button
-                  onClick={() => setInventoryTab('trophies')}
-                  className={clsx(
-                    'flex-1 py-3 rounded-xl font-bold transition-all',
-                    inventoryTab === 'trophies'
-                      ? theme === 'dark'
-                        ? 'bg-white text-zinc-950'
-                        : 'bg-zinc-900 text-white'
-                      : theme === 'dark'
-                        ? 'bg-zinc-800 text-zinc-500'
-                        : 'bg-zinc-100 text-zinc-500',
-                  )}
-                >
-                  {t('profile.trophies')}
-                </button>
-                <button
-                  onClick={() => setInventoryTab('titles')}
-                  className={clsx(
-                    'flex-1 py-3 rounded-xl font-bold transition-all',
-                    inventoryTab === 'titles'
-                      ? theme === 'dark'
-                        ? 'bg-white text-zinc-950'
-                        : 'bg-zinc-900 text-white'
-                      : theme === 'dark'
-                        ? 'bg-zinc-800 text-zinc-500'
-                        : 'bg-zinc-100 text-zinc-500',
-                  )}
-                >
-                  {t('profile.titles')}
-                </button>
-              </div>
-
-              {inventoryTab === 'trophies' ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {(userProfile.inventory?.trophies || []).map((currentTrophy) => (
-                    <div
-                      key={currentTrophy.id}
-                      className={clsx(
-                        'border rounded-2xl p-4 flex flex-col items-center text-center group relative',
-                        theme === 'dark' ? 'bg-zinc-950 border-white/5' : 'bg-zinc-50 border-zinc-200',
-                      )}
-                    >
-                      <Trophy
-                        className={clsx(
-                          'w-12 h-12 mb-3',
-                          currentTrophy.rank === 1 ? 'text-yellow-400' : currentTrophy.rank === 2 ? 'text-zinc-300' : 'text-amber-600',
-                        )}
-                      />
-                      <div className={clsx('font-bold text-sm mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                        {currentTrophy.name}
-                      </div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-widest">{currentTrophy.tournamentName}</div>
-
-                      <div className="mt-4 flex gap-2 w-full">
-                        <button
-                          onClick={() => setSelectedTrophy(currentTrophy)}
-                          className={clsx(
-                            'flex-1 p-2 rounded-lg transition-colors',
-                            theme === 'dark' ? 'bg-zinc-800 text-zinc-400 hover:text-white' : 'bg-white border border-zinc-200 text-zinc-500 hover:text-zinc-900',
-                          )}
-                        >
-                          <Info className="w-4 h-4 mx-auto" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            const currentSlot = (userProfile.showcase || []).find((slot) => slot.trophyId === currentTrophy.id);
-                            if (currentSlot) {
-                              void handlePlaceTrophy(currentSlot.slotId, null);
-                              return;
-                            }
-
-                            const emptySlot = (userProfile.showcase || []).find((slot) => !slot.trophyId);
-                            if (emptySlot) {
-                              void handlePlaceTrophy(emptySlot.slotId, currentTrophy.id);
-                            } else {
-                              alert(t('profile.showcaseFull'));
-                            }
-                          }}
-                          className={clsx(
-                            'flex-1 p-2 rounded-lg font-bold text-[10px] uppercase',
-                            (userProfile.showcase || []).some((slot) => slot.trophyId === currentTrophy.id)
-                              ? 'bg-red-500/10 text-red-500'
-                              : 'bg-emerald-500/10 text-emerald-500',
-                          )}
-                        >
-                          {(userProfile.showcase || []).some((slot) => slot.trophyId === currentTrophy.id) ? t('profile.remove') : t('profile.display')}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {(!userProfile.inventory?.trophies || userProfile.inventory.trophies.length === 0) ? (
-                    <div className="col-span-2 py-12 text-center text-zinc-500 font-medium">{t('profile.winToEarn')}</div>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(userProfile.inventory?.titles || []).map((title) => (
-                    <button
-                      key={title}
-                      onClick={() => void handleSelectTitle(title)}
-                      className={clsx(
-                        'w-full p-4 rounded-2xl border flex items-center justify-between transition-all',
-                        userProfile.selectedTitle === title
-                          ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-500'
-                          : theme === 'dark'
-                            ? 'bg-zinc-950 border-white/5 text-zinc-500 hover:border-white/10'
-                            : 'bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300',
-                      )}
-                    >
-                      <span className="font-bold">{title}</span>
-                      {userProfile.selectedTitle === title ? <CheckIcon className="w-5 h-5" /> : null}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          </div>
-        ) : null}
-      </AnimatePresence>
+      <ProfileInventorySheet
+        open={isInventoryOpen}
+        theme={theme}
+        language={language}
+        userProfile={userProfile}
+        inventoryTab={inventoryTab}
+        busy={inventoryBusy}
+        shopLoading={shopLoading}
+        shopProducts={shopProducts}
+        onClose={() => setIsInventoryOpen(false)}
+        onInventoryTabChange={setInventoryTab}
+        onSelectTitle={(title) => void handleSelectTitle(title)}
+        onPlaceTrophy={(slotId, trophyId) => void handlePlaceTrophy(slotId, trophyId)}
+        onSelectTrophy={setSelectedTrophy}
+        onPurchase={(productId) => void handlePurchaseProduct(productId)}
+      />
 
       <AnimatePresence>
         {selectedTrophy ? (
@@ -513,12 +649,7 @@ export default function Profile() {
               exit={{ scale: 0.9, opacity: 0 }}
               className={clsx('relative border rounded-[40px] p-10 max-w-sm w-full text-center shadow-[0_0_100px_rgba(245,158,11,0.2)]', theme === 'dark' ? 'bg-zinc-900 border-white/10' : 'bg-white border-zinc-200')}
             >
-              <Trophy
-                className={clsx(
-                  'w-32 h-32 mx-auto mb-8 drop-shadow-[0_0_30px_rgba(245,158,11,0.5)]',
-                  selectedTrophy.rank === 1 ? 'text-yellow-400' : selectedTrophy.rank === 2 ? 'text-zinc-300' : 'text-amber-600',
-                )}
-              />
+              <PrizeIcon rank={selectedTrophy.rank} className="w-36 h-36 mx-auto mb-8" />
               <h2 className={clsx('text-3xl font-black mb-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                 {selectedTrophy.name}
               </h2>
@@ -548,7 +679,3 @@ export default function Profile() {
     </div>
   );
 }
-
-
-
-

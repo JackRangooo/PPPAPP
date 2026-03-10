@@ -37,9 +37,23 @@ export interface ShowcaseSlot {
   trophyId: string | null;
 }
 
+export type InventoryItemKind = 'card';
+
+export interface InventoryItem {
+  productId: string;
+  name: string;
+  description: string;
+  kind: InventoryItemKind;
+  quantity: number;
+  priceCoins: number;
+  effectHint: string;
+  effectStatus: 'coming_soon' | 'active';
+}
+
 export interface Inventory {
   trophies: Trophy[];
   titles: string[];
+  items: InventoryItem[];
 }
 
 export interface UserProfile {
@@ -56,6 +70,7 @@ export interface UserProfile {
   rankedLosses: number;
   averageRank: number;
   tournamentsPlayed: number;
+  coins: number;
   inventory: Inventory;
   showcase: ShowcaseSlot[];
   selectedTitle: string | null;
@@ -171,4 +186,14 @@ export interface SubmitMatchScoreResult {
 export interface AuthPayload {
   session: AppSession;
   profile: UserProfile;
+}
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  description: string;
+  kind: InventoryItemKind;
+  priceCoins: number;
+  effectHint: string;
+  effectStatus: 'coming_soon' | 'active';
 }

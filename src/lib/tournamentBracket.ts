@@ -92,6 +92,7 @@ const createBracketMatch = (params: {
   round: number;
   slot: number;
   bestOf: number;
+  label?: string;
   player1?: UserProfile | null;
   player2?: UserProfile | null;
   player1Source?: string | null;
@@ -103,15 +104,18 @@ const createBracketMatch = (params: {
 }): TournamentBracketMatch => {
   const player1 = params.player1 ?? null;
   const player2 = params.player2 ?? null;
+  const hasResolvedPlayers = Boolean(player1?.uid && player2?.uid);
+  const hasPendingSource = Boolean(params.player1Source || params.player2Source);
+  const hasWalkoverCandidate = Boolean((player1?.uid || player2?.uid) && !hasPendingSource);
 
   return {
     id: crypto.randomUUID(),
     stage: params.stage,
     round: params.round,
     slot: params.slot,
-    label: getStageDisplayLabel(params.stage, params.slot),
+    label: params.label ?? getStageDisplayLabel(params.stage, params.slot),
     bestOf: params.bestOf,
-    status: player1 && player2 ? 'ready' : player1 || player2 ? 'ready' : 'waiting',
+    status: hasResolvedPlayers ? 'ready' : hasWalkoverCandidate ? 'ready' : 'waiting',
     player1Id: player1?.uid ?? null,
     player1Name: player1?.displayName ?? '',
     player1AvatarUrl: player1?.photoURL ?? '',
@@ -279,12 +283,7 @@ export const createTournamentBracket = (
 ): { bracket: TournamentBracket; timeline: TournamentTimelineEvent[] } => {
   const shuffled = [...participants].sort(() => Math.random() - 0.5);
   const size = shuffled.length <= 4 ? 4 : 8;
-  const seedLayout = size === 8 ? [0, 4, 6, 2, 3, 7, 5, 1] : [0, 2, 3, 1];
-  const slots = Array.from({ length: size }, () => null as UserProfile | null);
-
-  shuffled.slice(0, size).forEach((player, index) => {
-    slots[seedLayout[index]] = player;
-  });
+  const seeds = Array.from({ length: size }, (_, index) => shuffled[index] ?? null);
 
   const semifinal1 = crypto.randomUUID();
   const semifinal2 = crypto.randomUUID();
@@ -293,64 +292,82 @@ export const createTournamentBracket = (
 
   const matches: TournamentBracketMatch[] = [];
 
-  if (size === 8) {
-    const quarterfinalLabels = ['Quarterfinal 1', 'Quarterfinal 2', 'Quarterfinal 3', 'Quarterfinal 4'];
-    const quarterfinals = [
-      createBracketMatch({
-        stage: 'quarterfinal',
-        round: 1,
-        slot: 1,
-        bestOf: 1,
-        player1: slots[0],
-        player2: slots[1],
-        nextMatchId: semifinal1,
-        nextSlot: 1,
-      }),
-      createBracketMatch({
-        stage: 'quarterfinal',
-        round: 1,
-        slot: 2,
-        bestOf: 1,
-        player1: slots[2],
-        player2: slots[3],
-        nextMatchId: semifinal1,
-        nextSlot: 2,
-      }),
-      createBracketMatch({
-        stage: 'quarterfinal',
-        round: 1,
-        slot: 3,
-        bestOf: 1,
-        player1: slots[4],
-        player2: slots[5],
-        nextMatchId: semifinal2,
-        nextSlot: 1,
-      }),
-      createBracketMatch({
-        stage: 'quarterfinal',
-        round: 1,
-        slot: 4,
-        bestOf: 1,
-        player1: slots[6],
-        player2: slots[7],
-        nextMatchId: semifinal2,
-        nextSlot: 2,
-      }),
-    ].map((match, index) => ({ ...match, label: quarterfinalLabels[index] }));
+  const semifinalSlots = {
+    1: {
+      player1: null as UserProfile | null,
+      player2: null as UserProfile | null,
+      player1Source: null as string | null,
+      player2Source: null as string | null,
+    },
+    2: {
+      player1: null as UserProfile | null,
+      player2: null as UserProfile | null,
+      player1Source: null as string | null,
+      player2Source: null as string | null,
+    },
+  };
+
+  if (size === 4) {
+    semifinalSlots[1].player1 = seeds[0];
+    semifinalSlots[1].player2 = seeds[3];
+    semifinalSlots[2].player1 = seeds[1];
+    semifinalSlots[2].player2 = seeds[2];
+  } else {
+    const quarterfinalBlueprints = [
+      { slot: 1, player1: seeds[0], player2: seeds[7], semifinal: 1 as const, nextSlot: 1 as const },
+      { slot: 2, player1: seeds[3], player2: seeds[4], semifinal: 1 as const, nextSlot: 2 as const },
+      { slot: 3, player1: seeds[2], player2: seeds[5], semifinal: 2 as const, nextSlot: 1 as const },
+      { slot: 4, player1: seeds[1], player2: seeds[6], semifinal: 2 as const, nextSlot: 2 as const },
+    ];
+
+    const quarterfinals = quarterfinalBlueprints
+      .map((blueprint) => {
+        const hasPlayer1 = Boolean(blueprint.player1?.uid);
+        const hasPlayer2 = Boolean(blueprint.player2?.uid);
+
+        if (hasPlayer1 && hasPlayer2) {
+          return createBracketMatch({
+            stage: 'quarterfinal',
+            round: 1,
+            slot: blueprint.slot,
+            bestOf: 1,
+            player1: blueprint.player1,
+            player2: blueprint.player2,
+            nextMatchId: blueprint.semifinal === 1 ? semifinal1 : semifinal2,
+            nextSlot: blueprint.nextSlot,
+          });
+        }
+
+        const directPlayer = blueprint.player1 ?? blueprint.player2;
+        if (!directPlayer) {
+          return null;
+        }
+
+        if (blueprint.nextSlot === 1) {
+          semifinalSlots[blueprint.semifinal].player1 = directPlayer;
+        } else {
+          semifinalSlots[blueprint.semifinal].player2 = directPlayer;
+        }
+
+        return null;
+      })
+      .filter((match): match is TournamentBracketMatch => Boolean(match))
+      .sort((left, right) => left.slot - right.slot);
+
+    const quarterfinalLabelBase = participants.length === 8 ? 'Quarterfinal' : participants.length === 5 ? 'Play-In' : 'Qualifier';
+    quarterfinals.forEach((match, index) => {
+      match.label = quarterfinals.length === 1 ? quarterfinalLabelBase : `${quarterfinalLabelBase} ${index + 1}`;
+
+      const semifinal = match.nextMatchId === semifinal1 ? semifinalSlots[1] : semifinalSlots[2];
+      if (match.nextSlot === 1) {
+        semifinal.player1Source = `Winner of ${match.label}`;
+      } else {
+        semifinal.player2Source = `Winner of ${match.label}`;
+      }
+    });
 
     matches.push(...quarterfinals);
   }
-
-  const semifinalPlayers =
-    size === 4
-      ? [
-          [slots[0], slots[1]],
-          [slots[2], slots[3]],
-        ]
-      : [
-          [null, null],
-          [null, null],
-        ];
 
   matches.push(
     {
@@ -359,10 +376,10 @@ export const createTournamentBracket = (
         round: size === 4 ? 1 : 2,
         slot: 1,
         bestOf: 1,
-        player1: semifinalPlayers[0][0],
-        player2: semifinalPlayers[0][1],
-        player1Source: size === 8 ? 'Winner of Quarterfinal 1' : null,
-        player2Source: size === 8 ? 'Winner of Quarterfinal 2' : null,
+        player1: semifinalSlots[1].player1,
+        player2: semifinalSlots[1].player2,
+        player1Source: semifinalSlots[1].player1Source,
+        player2Source: semifinalSlots[1].player2Source,
         nextMatchId: finalId,
         nextSlot: 1,
         loserNextMatchId: thirdPlaceId,
@@ -377,10 +394,10 @@ export const createTournamentBracket = (
         round: size === 4 ? 1 : 2,
         slot: 2,
         bestOf: 1,
-        player1: semifinalPlayers[1][0],
-        player2: semifinalPlayers[1][1],
-        player1Source: size === 8 ? 'Winner of Quarterfinal 3' : null,
-        player2Source: size === 8 ? 'Winner of Quarterfinal 4' : null,
+        player1: semifinalSlots[2].player1,
+        player2: semifinalSlots[2].player2,
+        player1Source: semifinalSlots[2].player1Source,
+        player2Source: semifinalSlots[2].player2Source,
         nextMatchId: finalId,
         nextSlot: 2,
         loserNextMatchId: thirdPlaceId,

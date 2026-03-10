@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import PrizeIcon from '../components/PrizeIcon';
 import TrophyBadge from '../components/TrophyBadge';
 import { fetchPlayerProfile } from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
@@ -176,12 +177,7 @@ export default function PlayerProfile() {
               exit={{ scale: 0.9, opacity: 0 }}
               className={clsx('relative border rounded-[40px] p-10 max-w-sm w-full text-center shadow-[0_0_100px_rgba(245,158,11,0.2)]', theme === 'dark' ? 'bg-zinc-900 border-white/10' : 'bg-white border-zinc-200')}
             >
-              <Trophy
-                className={clsx(
-                  'w-32 h-32 mx-auto mb-8 drop-shadow-[0_0_30px_rgba(245,158,11,0.5)]',
-                  selectedTrophy.rank === 1 ? 'text-yellow-400' : selectedTrophy.rank === 2 ? 'text-zinc-300' : 'text-amber-600',
-                )}
-              />
+              <PrizeIcon rank={selectedTrophy.rank} className="w-36 h-36 mx-auto mb-8" />
               <h2 className={clsx('text-3xl font-black mb-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                 {selectedTrophy.name}
               </h2>

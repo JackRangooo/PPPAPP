@@ -18,7 +18,8 @@ create table if not exists public.profiles (
   ranked_losses integer not null default 0,
   average_rank integer not null default 0,
   tournaments_played integer not null default 0,
-  inventory jsonb not null default '{"trophies":[],"titles":["Novice Player"]}'::jsonb,
+  coins integer not null default 0,
+  inventory jsonb not null default '{"trophies":[],"titles":["Novice Player"],"items":[]}'::jsonb,
   showcase jsonb not null default '[{"slotId":1,"trophyId":null},{"slotId":2,"trophyId":null},{"slotId":3,"trophyId":null}]'::jsonb,
   selected_title text not null default 'Novice Player',
   theme text not null default 'dark' check (theme in ('dark', 'light')),
@@ -65,7 +66,8 @@ alter table public.profiles add column if not exists ranked_wins integer not nul
 alter table public.profiles add column if not exists ranked_losses integer not null default 0;
 alter table public.profiles add column if not exists average_rank integer not null default 0;
 alter table public.profiles add column if not exists tournaments_played integer not null default 0;
-alter table public.profiles add column if not exists inventory jsonb not null default '{"trophies":[],"titles":["Novice Player"]}'::jsonb;
+alter table public.profiles add column if not exists coins integer not null default 0;
+alter table public.profiles add column if not exists inventory jsonb not null default '{"trophies":[],"titles":["Novice Player"],"items":[]}'::jsonb;
 alter table public.profiles add column if not exists showcase jsonb not null default '[{"slotId":1,"trophyId":null},{"slotId":2,"trophyId":null},{"slotId":3,"trophyId":null}]'::jsonb;
 alter table public.profiles add column if not exists selected_title text not null default 'Novice Player';
 alter table public.profiles add column if not exists theme text not null default 'dark';
@@ -83,8 +85,12 @@ set display_name = nickname
 where display_name is null or btrim(display_name) = '';
 
 update public.profiles
-set inventory = '{"trophies":[],"titles":["Novice Player"]}'::jsonb
+set inventory = '{"trophies":[],"titles":["Novice Player"],"items":[]}'::jsonb
 where inventory is null;
+
+update public.profiles
+set coins = 0
+where coins is null;
 
 update public.profiles
 set showcase = '[{"slotId":1,"trophyId":null},{"slotId":2,"trophyId":null},{"slotId":3,"trophyId":null}]'::jsonb
@@ -167,6 +173,7 @@ alter table public.tournaments add column if not exists admin_user_id uuid refer
 alter table public.tournaments add column if not exists format text not null default 'single_elimination_third';
 alter table public.tournaments add column if not exists bracket jsonb not null default '{"size":0,"matches":[]}'::jsonb;
 alter table public.tournaments add column if not exists timeline jsonb not null default '[]'::jsonb;
+alter table public.tournaments add column if not exists rewards_granted boolean not null default false;
 
 update public.tournaments
 set format = 'single_elimination_third'
@@ -179,6 +186,10 @@ where bracket is null;
 update public.tournaments
 set timeline = '[]'::jsonb
 where timeline is null;
+
+update public.tournaments
+set rewards_granted = false
+where rewards_granted is null;
 
 create table if not exists public.tournament_match_comments (
   id uuid primary key default gen_random_uuid(),
@@ -202,6 +213,58 @@ create table if not exists public.app_sessions (
   expires_at timestamptz not null,
   revoked_at timestamptz
 );
+
+create table if not exists public.shop_products (
+  id text primary key,
+  name text not null,
+  description text not null,
+  kind text not null,
+  price_coins integer not null check (price_coins >= 0),
+  effect_hint text not null default '',
+  effect_status text not null default 'coming_soon',
+  is_active boolean not null default true,
+  sort_order integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists shop_products_active_idx on public.shop_products (is_active, sort_order asc);
+
+insert into public.shop_products (
+  id,
+  name,
+  description,
+  kind,
+  price_coins,
+  effect_hint,
+  effect_status,
+  sort_order,
+  metadata
+)
+values (
+  'select_card',
+  'Self-Select Card',
+  'Lets you choose your first-round opponent in a future tournament. Purchase only for now; effect comes later.',
+  'card',
+  60,
+  'Reserve this card now. Tournament effect will be wired in a later release.',
+  'coming_soon',
+  10,
+  '{"futureEffect":"Choose your first-round opponent in a tournament."}'::jsonb
+)
+on conflict (id) do update
+set
+  name = excluded.name,
+  description = excluded.description,
+  kind = excluded.kind,
+  price_coins = excluded.price_coins,
+  effect_hint = excluded.effect_hint,
+  effect_status = excluded.effect_status,
+  is_active = true,
+  sort_order = excluded.sort_order,
+  metadata = excluded.metadata,
+  updated_at = timezone('utc', now());
 
 alter table public.app_sessions alter column id set default gen_random_uuid();
 create index if not exists app_sessions_user_id_idx on public.app_sessions (user_id);
@@ -238,13 +301,47 @@ before update on public.tournaments
 for each row
 execute procedure public.touch_updated_at();
 
+create or replace function public.normalize_inventory(existing_inventory jsonb)
+returns jsonb
+language sql
+immutable
+as $$
+  with inventory as (
+    select coalesce(existing_inventory, '{}'::jsonb) as value
+  )
+  select jsonb_build_object(
+    'trophies',
+    case
+      when jsonb_typeof((select value -> 'trophies' from inventory)) = 'array'
+        then coalesce((select value -> 'trophies' from inventory), '[]'::jsonb)
+      else '[]'::jsonb
+    end,
+    'titles',
+    case
+      when jsonb_typeof((select value -> 'titles' from inventory)) = 'array'
+           and jsonb_array_length(coalesce((select value -> 'titles' from inventory), '[]'::jsonb)) > 0
+        then coalesce((select value -> 'titles' from inventory), '[]'::jsonb)
+      else '["Novice Player"]'::jsonb
+    end,
+    'items',
+    case
+      when jsonb_typeof((select value -> 'items' from inventory)) = 'array'
+        then coalesce((select value -> 'items' from inventory), '[]'::jsonb)
+      else '[]'::jsonb
+    end
+  );
+$$;
+
+update public.profiles
+set inventory = public.normalize_inventory(inventory);
+
 create or replace function public.append_title(existing_inventory jsonb, new_title text)
 returns jsonb
 language sql
 immutable
 as $$
   with inventory as (
-    select coalesce(existing_inventory, '{"trophies":[],"titles":[]}'::jsonb) as value
+    select public.normalize_inventory(existing_inventory) as value
   ),
   titles as (
     select case
@@ -260,7 +357,8 @@ as $$
   )
   select jsonb_build_object(
     'trophies', coalesce((select value -> 'trophies' from inventory), '[]'::jsonb),
-    'titles', (select value from titles)
+    'titles', (select value from titles),
+    'items', coalesce((select value -> 'items' from inventory), '[]'::jsonb)
   );
 $$;
 
@@ -270,11 +368,80 @@ language sql
 immutable
 as $$
   with inventory as (
-    select coalesce(existing_inventory, '{"trophies":[],"titles":[]}'::jsonb) as value
+    select public.normalize_inventory(existing_inventory) as value
   )
   select jsonb_build_object(
     'trophies', coalesce((select value -> 'trophies' from inventory), '[]'::jsonb) || jsonb_build_array(new_trophy),
-    'titles', coalesce((select value -> 'titles' from inventory), '[]'::jsonb)
+    'titles', coalesce((select value -> 'titles' from inventory), '[]'::jsonb),
+    'items', coalesce((select value -> 'items' from inventory), '[]'::jsonb)
+  );
+$$;
+
+create or replace function public.upsert_inventory_item(
+  existing_inventory jsonb,
+  p_product_id text,
+  p_name text,
+  p_description text,
+  p_kind text,
+  p_price_coins integer,
+  p_effect_hint text,
+  p_effect_status text,
+  p_quantity integer default 1
+)
+returns jsonb
+language sql
+immutable
+as $$
+  with inventory as (
+    select public.normalize_inventory(existing_inventory) as value
+  ),
+  items as (
+    select coalesce((select value -> 'items' from inventory), '[]'::jsonb) as value
+  ),
+  existing_item as (
+    select item.value
+    from jsonb_array_elements((select value from items)) as item(value)
+    where item.value ->> 'productId' = p_product_id
+    limit 1
+  ),
+  next_item as (
+    select jsonb_build_object(
+      'productId', p_product_id,
+      'name', p_name,
+      'description', p_description,
+      'kind', p_kind,
+      'quantity', greatest(1, coalesce(p_quantity, 1))
+        + coalesce(((select value ->> 'quantity' from existing_item))::integer, 0),
+      'priceCoins', greatest(0, coalesce(p_price_coins, 0)),
+      'effectHint', coalesce(p_effect_hint, ''),
+      'effectStatus', coalesce(p_effect_status, 'coming_soon')
+    ) as value
+  ),
+  merged_items as (
+    select coalesce(
+      (
+        select jsonb_agg(
+          case
+            when item.value ->> 'productId' = p_product_id then (select value from next_item)
+            else item.value
+          end
+        )
+        from jsonb_array_elements((select value from items)) as item(value)
+      ),
+      '[]'::jsonb
+    ) as value
+  ),
+  final_items as (
+    select case
+      when exists (select 1 from existing_item)
+        then (select value from merged_items)
+      else (select value from items) || jsonb_build_array((select value from next_item))
+    end as value
+  )
+  select jsonb_build_object(
+    'trophies', coalesce((select value -> 'trophies' from inventory), '[]'::jsonb),
+    'titles', coalesce((select value -> 'titles' from inventory), '[]'::jsonb),
+    'items', coalesce((select value from final_items), '[]'::jsonb)
   );
 $$;
 
@@ -715,6 +882,88 @@ begin
 end;
 $$;
 
+create or replace function public.list_shop_products_for_user(
+  p_session_token text
+)
+returns setof public.shop_products
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  return query
+  select *
+  from public.shop_products
+  where is_active
+  order by sort_order asc, created_at asc;
+end;
+$$;
+
+create or replace function public.purchase_shop_item(
+  p_session_token text,
+  p_product_id text,
+  p_quantity integer default 1
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile public.profiles;
+  v_product public.shop_products;
+  v_quantity integer := greatest(1, least(coalesce(p_quantity, 1), 20));
+  v_total_cost integer;
+begin
+  v_profile := public.current_profile_from_session(p_session_token, false);
+
+  select *
+  into v_product
+  from public.shop_products
+  where id = btrim(coalesce(p_product_id, ''))
+    and is_active
+  limit 1;
+
+  if v_product.id is null then
+    raise exception 'This item is not available.';
+  end if;
+
+  v_total_cost := v_product.price_coins * v_quantity;
+
+  if coalesce(v_profile.coins, 0) < v_total_cost then
+    raise exception 'Not enough coins for this purchase.';
+  end if;
+
+  update public.profiles
+  set
+    coins = coins - v_total_cost,
+    inventory = public.upsert_inventory_item(
+      inventory,
+      v_product.id,
+      v_product.name,
+      v_product.description,
+      v_product.kind,
+      v_product.price_coins,
+      v_product.effect_hint,
+      v_product.effect_status,
+      v_quantity
+    )
+  where id = v_profile.id
+    and coins >= v_total_cost
+  returning * into v_profile;
+
+  if not found then
+    raise exception 'Not enough coins for this purchase.';
+  end if;
+
+  return v_profile;
+end;
+$$;
+
 create or replace function public.list_recent_matches_for_user(
   p_session_token text,
   p_limit integer default 8
@@ -1132,8 +1381,35 @@ begin
 end;
 $$;
 
-create or replace function public.end_tournament(
-  p_session_token text,
+create or replace function public.get_tournament_round_coin_reward(p_round integer)
+returns integer
+language sql
+immutable
+as $$
+  select case coalesce(p_round, 0)
+    when 1 then 100
+    when 2 then 50
+    when 3 then 20
+    else 10
+  end;
+$$;
+
+create or replace function public.get_tournament_match_loser_id(p_match jsonb)
+returns uuid
+language sql
+immutable
+as $$
+  select case
+    when coalesce(p_match ->> 'winnerId', '') = '' then null
+    when coalesce(p_match ->> 'winnerId', '') = coalesce(p_match ->> 'player1Id', '')
+      then nullif(p_match ->> 'player2Id', '')::uuid
+    when coalesce(p_match ->> 'winnerId', '') = coalesce(p_match ->> 'player2Id', '')
+      then nullif(p_match ->> 'player1Id', '')::uuid
+    else null
+  end;
+$$;
+
+create or replace function public.award_tournament_rewards(
   p_tournament_id uuid
 )
 returns public.tournaments
@@ -1142,26 +1418,13 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  v_requester public.profiles;
   v_tournament public.tournaments;
-  v_participants uuid[];
-  v_shuffled uuid[];
   v_participant uuid;
-  v_rank integer;
-  v_trophy jsonb;
+  v_elimination_round integer;
+  v_coin_reward integer;
   v_points integer;
-  v_participation_points integer := 10;
-  v_champion_bonus integer := 90;
-  v_runner_up_bonus integer := 50;
-  v_third_place_bonus integer := 30;
+  v_trophy jsonb;
 begin
-  v_requester := public.current_profile_from_session(p_session_token, false);
-
-  if not coalesce(v_requester.is_root, false) then
-    raise exception 'Only the root admin can end a tournament.';
-  end if;
-
-
   select *
   into v_tournament
   from public.tournaments
@@ -1172,61 +1435,83 @@ begin
     raise exception 'Tournament not found.';
   end if;
 
-  if v_tournament.status = 'completed' then
+  if v_tournament.rewards_granted then
     return v_tournament;
   end if;
 
-  v_participants := coalesce(v_tournament.participants, '{}'::uuid[]);
-
-  if coalesce(array_length(v_participants, 1), 0) = 0 then
-    raise exception 'A tournament needs participants before it can be completed.';
+  if v_tournament.status <> 'completed' then
+    raise exception 'Tournament rewards can only be granted after completion.';
   end if;
 
-  select coalesce(array_agg(participant order by random()), '{}'::uuid[])
-  into v_shuffled
-  from unnest(v_participants) as participant;
-
-  foreach v_participant in array v_participants
+  foreach v_participant in array coalesce(v_tournament.participants, '{}'::uuid[])
   loop
+    select max((match.value ->> 'round')::integer)
+    into v_elimination_round
+    from jsonb_array_elements(coalesce(v_tournament.bracket -> 'matches', '[]'::jsonb)) as match(value)
+    where coalesce(match.value ->> 'status', '') in ('completed', 'walkover')
+      and public.get_tournament_match_loser_id(match.value) = v_participant;
+
+    v_coin_reward := case
+      when v_elimination_round is null then 10
+      else public.get_tournament_round_coin_reward(v_elimination_round)
+    end;
+
+    v_points := case
+      when v_participant = v_tournament.winner_id then 10
+      when v_participant = v_tournament.runner_up_id then 5
+      when v_participant = v_tournament.third_place_id then 2
+      else 0
+    end;
+
     update public.profiles
     set
       tournaments_played = tournaments_played + 1,
-      ranked_points = ranked_points + v_participation_points,
+      ranked_points = ranked_points + v_points,
+      coins = coins + greatest(v_coin_reward, 10),
       inventory = public.append_title(inventory, 'Tournament Participant')
     where id = v_participant;
-  end loop;
 
-  for v_rank in 1..least(3, coalesce(array_length(v_shuffled, 1), 0))
-  loop
-    v_points := case
-      when v_rank = 1 then v_champion_bonus
-      when v_rank = 2 then v_runner_up_bonus
-      else v_third_place_bonus
-    end;
+    if v_participant = v_tournament.winner_id then
+      v_trophy := jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'name', 'Champion Trophy',
+        'tournamentName', v_tournament.name,
+        'rank', 1,
+        'date', to_char(current_date, 'YYYY-MM-DD')
+      );
 
-    v_trophy := jsonb_build_object(
-      'id', extensions.gen_random_uuid()::text,
-      'name', case
-        when v_rank = 1 then 'Gold Cup'
-        when v_rank = 2 then 'Silver Cup'
-        else 'Bronze Cup'
-      end,
-      'tournamentName', v_tournament.name,
-      'rank', v_rank,
-      'date', to_char(current_date, 'YYYY-MM-DD')
-    );
+      update public.profiles
+      set inventory = public.append_trophy(inventory, v_trophy)
+      where id = v_participant;
+    elsif v_participant = v_tournament.runner_up_id then
+      v_trophy := jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'name', 'Finalist Medal',
+        'tournamentName', v_tournament.name,
+        'rank', 2,
+        'date', to_char(current_date, 'YYYY-MM-DD')
+      );
 
-    update public.profiles
-    set
-      ranked_points = ranked_points + v_points,
-      inventory = public.append_trophy(inventory, v_trophy)
-    where id = v_shuffled[v_rank];
+      update public.profiles
+      set inventory = public.append_trophy(inventory, v_trophy)
+      where id = v_participant;
+    elsif v_participant = v_tournament.third_place_id then
+      v_trophy := jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'name', 'Bronze Medal',
+        'tournamentName', v_tournament.name,
+        'rank', 3,
+        'date', to_char(current_date, 'YYYY-MM-DD')
+      );
+
+      update public.profiles
+      set inventory = public.append_trophy(inventory, v_trophy)
+      where id = v_participant;
+    end if;
   end loop;
 
   update public.tournaments
-  set
-    status = 'completed',
-    winner_id = v_shuffled[1]
+  set rewards_granted = true
   where id = p_tournament_id
   returning * into v_tournament;
 
@@ -1246,6 +1531,70 @@ begin
   end if;
 
   return v_tournament;
+end;
+$$;
+
+create or replace function public.end_tournament(
+  p_session_token text,
+  p_tournament_id uuid
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_participants uuid[];
+  v_shuffled uuid[];
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can end a tournament.';
+  end if;
+
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id
+  for update;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  if v_tournament.status = 'completed' then
+    if not coalesce(v_tournament.rewards_granted, false) then
+      return public.award_tournament_rewards(v_tournament.id);
+    end if;
+
+    return v_tournament;
+  end if;
+
+  v_participants := coalesce(v_tournament.participants, '{}'::uuid[]);
+
+  if coalesce(array_length(v_participants, 1), 0) = 0 then
+    raise exception 'A tournament needs participants before it can be completed.';
+  end if;
+
+  select coalesce(array_agg(participant order by random()), '{}'::uuid[])
+  into v_shuffled
+  from unnest(v_participants) as participant;
+
+  update public.tournaments
+  set
+    status = 'completed',
+    winner_id = v_shuffled[1],
+    runner_up_id = case when coalesce(array_length(v_shuffled, 1), 0) >= 2 then v_shuffled[2] else null end,
+    third_place_id = case when coalesce(array_length(v_shuffled, 1), 0) >= 3 then v_shuffled[3] else null end,
+    rewards_granted = false
+  where id = p_tournament_id
+  returning * into v_tournament;
+
+  return public.award_tournament_rewards(v_tournament.id);
 end;
 $$;
 
@@ -1480,9 +1829,14 @@ begin
     timeline = p_timeline,
     winner_id = case when p_status = 'completed' then p_winner_id else winner_id end,
     runner_up_id = case when p_status = 'completed' then p_runner_up_id else runner_up_id end,
-    third_place_id = case when p_status = 'completed' then p_third_place_id else third_place_id end
+    third_place_id = case when p_status = 'completed' then p_third_place_id else third_place_id end,
+    rewards_granted = case when p_status = 'completed' then false else rewards_granted end
   where id = p_tournament_id
   returning * into v_tournament;
+
+  if p_status = 'completed' then
+    v_tournament := public.award_tournament_rewards(v_tournament.id);
+  end if;
 
   return v_tournament;
 end;
@@ -1690,6 +2044,109 @@ begin
   where c.id = v_comment_id;
 end;
 $$;
+
+create or replace function public.admin_reset_user_progress(
+  p_session_token text,
+  p_user_id uuid
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_target public.profiles;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can reset user data.';
+  end if;
+
+  if p_user_id is null then
+    raise exception 'Choose a user to reset.';
+  end if;
+
+  if p_user_id = v_requester.id then
+    raise exception 'Reset your own root account manually if you really need to.';
+  end if;
+
+  select *
+  into v_target
+  from public.profiles
+  where id = p_user_id
+  for update;
+
+  if v_target.id is null then
+    raise exception 'User not found.';
+  end if;
+
+  if exists (
+    select 1
+    from public.tournaments
+    where status = 'ongoing'
+      and (
+        p_user_id = any(participants)
+        or winner_id = p_user_id
+        or runner_up_id = p_user_id
+        or third_place_id = p_user_id
+        or admin_user_id = p_user_id
+      )
+  ) then
+    raise exception 'Cannot reset a user who is still part of an ongoing tournament.';
+  end if;
+
+  delete from public.tournament_match_comments
+  where user_id = p_user_id;
+
+  delete from public.matches
+  where player1_id = p_user_id
+     or player2_id = p_user_id;
+
+  update public.tournaments
+  set
+    participants = array_remove(participants, p_user_id),
+    winner_id = case when status = 'registration' and winner_id = p_user_id then null else winner_id end,
+    runner_up_id = case when status = 'registration' and runner_up_id = p_user_id then null else runner_up_id end,
+    third_place_id = case when status = 'registration' and third_place_id = p_user_id then null else third_place_id end,
+    admin_user_id = case when status = 'registration' and admin_user_id = p_user_id then null else admin_user_id end
+  where status = 'registration'
+    and (
+      p_user_id = any(participants)
+      or winner_id = p_user_id
+      or runner_up_id = p_user_id
+      or third_place_id = p_user_id
+      or admin_user_id = p_user_id
+    );
+
+  update public.profiles
+  set
+    display_name = nickname,
+    avatar_url = '',
+    casual_stars = 0,
+    casual_wins = 0,
+    casual_losses = 0,
+    ranked_points = 0,
+    ranked_wins = 0,
+    ranked_losses = 0,
+    average_rank = 0,
+    tournaments_played = 0,
+    coins = 0,
+    inventory = '{"trophies":[],"titles":["Novice Player"],"items":[]}'::jsonb,
+    showcase = '[{"slotId":1,"trophyId":null},{"slotId":2,"trophyId":null},{"slotId":3,"trophyId":null}]'::jsonb,
+    selected_title = 'Novice Player'
+  where id = p_user_id
+  returning * into v_target;
+
+  update public.app_sessions
+  set revoked_at = timezone('utc', now())
+  where user_id = p_user_id
+    and revoked_at is null;
+
+  return v_target;
+end;
+$$;
 grant execute on function public.register_with_password(text, text) to anon, authenticated;
 grant execute on function public.login_with_password(text, text) to anon, authenticated;
 grant execute on function public.restore_password_session(text) to anon, authenticated;
@@ -1700,6 +2157,8 @@ grant execute on function public.update_profile_preferences(text, text, text, te
 grant execute on function public.rename_profile_display_name(text, text) to anon, authenticated;
 grant execute on function public.list_profiles_for_user(text, text, integer) to anon, authenticated;
 grant execute on function public.list_leaderboard_profiles(text) to anon, authenticated;
+grant execute on function public.list_shop_products_for_user(text) to anon, authenticated;
+grant execute on function public.purchase_shop_item(text, text, integer) to anon, authenticated;
 grant execute on function public.list_recent_matches_for_user(text, integer) to anon, authenticated;
 grant execute on function public.list_active_casual_matches_for_user(text) to anon, authenticated;
 grant execute on function public.get_match_for_user(text, uuid) to anon, authenticated;
@@ -1715,6 +2174,7 @@ grant execute on function public.save_tournament_progress(text, uuid, uuid, json
 grant execute on function public.cancel_tournament(text, uuid) to anon, authenticated;
 grant execute on function public.list_tournament_match_comments(text, uuid, uuid) to anon, authenticated;
 grant execute on function public.create_tournament_match_comment(text, uuid, uuid, text) to anon, authenticated;
+grant execute on function public.admin_reset_user_progress(text, uuid) to anon, authenticated;
 
 insert into public.tournaments (name, status, start_date, end_date)
 select
