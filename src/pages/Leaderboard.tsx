@@ -151,6 +151,10 @@ export default function Leaderboard() {
       <div className="space-y-3">
         {loading ? (
           <div className="text-center py-12 text-zinc-500 font-medium">{t('leaderboard.loading')}</div>
+        ) : sortedUsers.length === 0 ? (
+          <div className={clsx('border rounded-2xl p-8 text-center font-medium', theme === 'dark' ? 'bg-zinc-900/30 border-white/5 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-500 shadow-sm')}>
+            {t('leaderboard.empty')}
+          </div>
         ) : (
           <AnimatePresence mode="popLayout">
             {sortedUsers.map((currentUser, index) => {
@@ -218,3 +222,4 @@ export default function Leaderboard() {
     </motion.div>
   );
 }
+

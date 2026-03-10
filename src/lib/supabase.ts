@@ -9,36 +9,38 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    persistSession: true,
-  },
-});
+export const APP_SESSION_STORAGE_KEY = 'pppapp.session';
+export const APP_POLL_INTERVAL_MS = 15000;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const subscribeToTable = (
-  table: 'profiles' | 'matches' | 'tournaments',
+  _table: 'profiles' | 'matches' | 'tournaments',
   onChange: () => void,
-  filter?: string,
+  _filter?: string,
 ) => {
-  const channel = supabase
-    .channel(`${table}-${crypto.randomUUID()}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table,
-        ...(filter ? { filter } : {}),
-      },
-      () => {
-        onChange();
-      },
-    )
-    .subscribe();
+  if (typeof window === 'undefined') {
+    return () => undefined;
+  }
+
+  const runRefresh = () => {
+    onChange();
+  };
+
+  const intervalId = window.setInterval(runRefresh, APP_POLL_INTERVAL_MS);
+  const handleFocus = () => runRefresh();
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      runRefresh();
+    }
+  };
+
+  window.addEventListener('focus', handleFocus);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   return () => {
-    void supabase.removeChannel(channel);
+    window.clearInterval(intervalId);
+    window.removeEventListener('focus', handleFocus);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
   };
 };

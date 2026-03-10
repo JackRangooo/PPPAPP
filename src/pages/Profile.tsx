@@ -22,7 +22,7 @@ import type { Trophy as TrophyType } from '../types';
 import { useTranslation } from '../i18n';
 
 export default function Profile() {
-  const { userProfile, logOut, theme, toggleTheme, language, setLanguage } = useAuth();
+  const { userProfile, logOut, theme, toggleTheme, language, setLanguage, syncProfile } = useAuth();
   const t = useTranslation(language);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isInventoryOpen, setIsInventoryOpen] = useState(false);
@@ -46,7 +46,8 @@ export default function Profile() {
     }
 
     try {
-      await updateProfileDisplayName(userProfile.uid, trimmed);
+      const updatedProfile = await updateProfileDisplayName(trimmed);
+      syncProfile(updatedProfile);
       setIsEditingName(false);
     } catch (error) {
       console.error('Failed to rename', error);
@@ -56,7 +57,8 @@ export default function Profile() {
 
   const handleSelectTitle = async (title: string) => {
     try {
-      await updateProfilePreferences(userProfile.uid, { selectedTitle: title });
+      const updatedProfile = await updateProfilePreferences({ selectedTitle: title });
+      syncProfile(updatedProfile);
     } catch (error) {
       console.error('Failed to select title', error);
     }
@@ -68,7 +70,8 @@ export default function Profile() {
     );
 
     try {
-      await updateProfilePreferences(userProfile.uid, { showcase: newShowcase });
+      const updatedProfile = await updateProfilePreferences({ showcase: newShowcase });
+      syncProfile(updatedProfile);
     } catch (error) {
       console.error('Failed to update showcase', error);
     }
@@ -552,4 +555,7 @@ export default function Profile() {
     </div>
   );
 }
+
+
+
 

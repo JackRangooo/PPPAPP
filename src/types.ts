@@ -10,6 +10,13 @@ export type MatchStatus =
 export type MatchType = 'casual' | 'ranked';
 export type TournamentStatus = 'registration' | 'ongoing' | 'completed';
 
+export interface AppSession {
+  token: string;
+  userId: string;
+  nickname: string;
+  expiresAt: string;
+}
+
 export interface Trophy {
   id: string;
   name: string;
@@ -30,6 +37,7 @@ export interface Inventory {
 
 export interface UserProfile {
   uid: string;
+  nickname: string;
   email: string;
   displayName: string;
   photoURL: string;
@@ -84,4 +92,9 @@ export interface Tournament {
 export interface SubmitMatchScoreResult {
   result: 'waiting' | 'completed' | 'reset';
   match: Match;
+}
+
+export interface AuthPayload {
+  session: AppSession;
+  profile: UserProfile;
 }

@@ -6,16 +6,19 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 import { listUserRecentMatches, searchProfiles } from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
 import type { Match, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
+const ACTIVITY_MATCH_LIMIT = 1000;
+
 export default function Dashboard() {
   const { userProfile, theme, language } = useAuth();
   const t = useTranslation(language);
   const navigate = useNavigate();
-  const [recentMatches, setRecentMatches] = useState<Match[]>([]);
+  const [activityMatches, setActivityMatches] = useState<Match[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -23,17 +26,17 @@ export default function Dashboard() {
   useEffect(() => {
     if (!userProfile) return;
 
-    const loadRecentMatches = async () => {
+    const loadMatches = async () => {
       try {
-        setRecentMatches(await listUserRecentMatches(userProfile.uid));
+        setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT));
       } catch (error) {
-        console.error('Failed to load recent matches', error);
+        console.error('Failed to load match activity', error);
       }
     };
 
-    void loadRecentMatches();
+    void loadMatches();
     return subscribeToTable('matches', () => {
-      void loadRecentMatches();
+      void loadMatches();
     });
   }, [userProfile]);
 
@@ -63,6 +66,7 @@ export default function Dashboard() {
 
   if (!userProfile) return null;
 
+  const recentMatches = activityMatches.slice(0, 8);
   const winRate =
     userProfile.casualWins + userProfile.casualLosses > 0
       ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
@@ -214,6 +218,8 @@ export default function Dashboard() {
           {t('play.ranked')}
         </Link>
       </div>
+
+      <ActivityHeatmap matches={activityMatches} theme={theme} language={language} />
 
       <div>
         <div className="flex items-center justify-between mb-4">

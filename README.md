@@ -1,9 +1,7 @@
 ﻿# PingProPrivate
 
-This project has been migrated away from Firebase and now uses:
-
-- Vercel for frontend hosting
-- Supabase for auth, database, and realtime updates
+PingProPrivate now runs as a Vite frontend deployed on Vercel with Supabase as the hosted database/API layer.
+The app no longer depends on Firebase, Google Cloud, Google OAuth, or email magic-link login.
 
 ## Local setup
 
@@ -11,20 +9,24 @@ This project has been migrated away from Firebase and now uses:
    `npm install`
 2. Create a Supabase project.
 3. In the Supabase SQL editor, run [`supabase/schema.sql`](./supabase/schema.sql).
-4. In Supabase Auth settings, add these redirect URLs:
-   - `http://localhost:3000`
-   - your Vercel production URL
-5. Copy [.env.example](./.env.example) to `.env.local` and set:
+4. Copy [.env.example](./.env.example) to `.env.local` and set:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-6. Start the app:
+5. Start the app:
    `npm run dev`
 
 ## Auth model
 
-The app now uses Supabase email magic-link login.
-On first login, a profile row is created automatically by the SQL trigger.
-Users can rename themselves inside the app after signing in.
+The app now uses nickname + password authentication backed by Supabase Postgres RPCs.
+Passwords are stored as hashes in the `profiles.password_hash` column and browser login state is kept in a long-lived app session token saved locally.
+
+Current product flow:
+
+- show a splash/logo animation on launch
+- restore the local session if one is still valid
+- otherwise send the user to the login/register screen
+- register with nickname + password and sign in immediately
+- keep the device signed in until the user logs out or the session expires
 
 ## Database model
 
@@ -33,13 +35,15 @@ Main tables created by [`supabase/schema.sql`](./supabase/schema.sql):
 - `profiles`
 - `matches`
 - `tournaments`
+- `app_sessions`
 
 The SQL file also sets up:
 
-- Row Level Security policies
-- match/tournament RPC functions
-- realtime publication entries
-- a starter weekly tournament row
+- nickname/password auth RPCs
+- custom session restore/logout RPCs
+- match and tournament RPCs
+- row-level security with RPC-only access
+- starter weekly tournament data
 
 ## Deploy to Vercel
 
@@ -50,12 +54,10 @@ The SQL file also sets up:
 3. Add the same environment variables used locally:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-4. After the first deploy, add the final Vercel URL to Supabase Auth redirect URLs.
-
-`vercel.json` includes an SPA rewrite so routes like `/match/:id` work on refresh.
+4. Deploy. `vercel.json` already contains the SPA rewrite needed for client-side routes.
 
 ## Migration notes
 
-- Firebase SDK usage has been removed from the app code.
-- Google Sign-In has been replaced with Supabase email login.
-- Firebase config/rules files are no longer needed after this migration.
+- Existing email magic-link users from the earlier Supabase Auth version may already have profile rows but no local password yet.
+- Those users should either register a fresh nickname/password account or be migrated manually by assigning a `nickname` and `password_hash` in Supabase.
+- After updating the SQL schema, re-run the app so the new RPC layer and stored-session flow are used end to end.
