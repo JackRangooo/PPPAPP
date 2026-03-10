@@ -41,11 +41,18 @@ import { useTranslation } from '../i18n';
 
 const copy = {
   en: {
-    createTournament: 'Create Tournament',
+    createTournament: 'Publish Admin Tournament',
     startTournament: 'Start Bracket',
     cancelTournament: 'Cancel Tournament',
     forceSettle: 'Force Settle',
     minPlayersHint: 'Need at least 4 players and at most 8 players.',
+    activeTournaments: 'Tournament Lobby',
+    selectedTournament: 'Selected Tournament',
+    systemSource: 'System',
+    adminSource: 'Admin',
+    systemDescription: 'Always-on weekly tournament published by the system.',
+    adminDescription: 'Extra event published manually by the root admin.',
+    adminTournamentLimit: 'One admin tournament can stay active at a time. Cancel or finish it before publishing another one.',
     bracketTitle: 'Live Bracket',
     matchDesk: 'Match Desk',
     scoreLine: 'Score line',
@@ -85,11 +92,18 @@ const copy = {
     startedByRoot: 'Official single-elimination bracket with a third-place match.',
   },
   zh: {
-    createTournament: '创建锦标赛',
+    createTournament: '发布管理员锦标赛',
     startTournament: '开始对阵',
     cancelTournament: '取消锦标赛',
     forceSettle: '强制结算',
     minPlayersHint: '至少 4 人、最多 8 人后才能正式开赛。',
+    activeTournaments: '赛事大厅',
+    selectedTournament: '当前选中赛事',
+    systemSource: '系统发布',
+    adminSource: '管理员发布',
+    systemDescription: '系统每周自动维护的常驻锦标赛。',
+    adminDescription: '由 root 管理员手动发布的额外赛事。',
+    adminTournamentLimit: '同一时间只保留一个管理员赛事，想再发新的请先取消或结算当前管理员赛事。',
     bracketTitle: '实时对阵表',
     matchDesk: '比赛操作台',
     scoreLine: '比分录入',
@@ -137,6 +151,11 @@ const statusOrder: Record<Tournament['status'], number> = {
   cancelled: 3,
 };
 
+const sourceOrder: Record<Tournament['source'], number> = {
+  system: 0,
+  admin: 1,
+};
+
 const upsertTournament = (tournaments: Tournament[], nextTournament: Tournament) => {
   const withoutCurrent = tournaments.filter((tournament) => tournament.id !== nextTournament.id);
   return [...withoutCurrent, nextTournament].sort((left, right) => {
@@ -144,6 +163,12 @@ const upsertTournament = (tournaments: Tournament[], nextTournament: Tournament)
     if (statusDelta !== 0) {
       return statusDelta;
     }
+
+    const sourceDelta = sourceOrder[left.source] - sourceOrder[right.source];
+    if (sourceDelta !== 0) {
+      return sourceDelta;
+    }
+
     return new Date(right.startDate).getTime() - new Date(left.startDate).getTime();
   });
 };
@@ -181,6 +206,7 @@ export default function Tournaments() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [comments, setComments] = useState<TournamentMatchComment[]>([]);
   const [commentBody, setCommentBody] = useState('');
@@ -232,23 +258,42 @@ export default function Tournaments() {
     };
   }, [userProfile]);
 
-  const featuredTournament = useMemo(
-    () =>
-      tournaments.find((tournament) => tournament.status === 'registration' || tournament.status === 'ongoing') ||
-      tournaments[0] ||
-      null,
+  const activeTournaments = useMemo(
+    () => tournaments.filter((tournament) => tournament.status === 'registration' || tournament.status === 'ongoing'),
     [tournaments],
   );
 
-  const pastTournaments = useMemo(() => {
-    if (!featuredTournament) {
-      return tournaments;
-    }
+  useEffect(() => {
+    setSelectedTournamentId((current) => {
+      const currentTournament = current ? tournaments.find((tournament) => tournament.id === current) : null;
+      if (currentTournament) {
+        const currentIsActive =
+          currentTournament.status === 'registration' || currentTournament.status === 'ongoing';
 
-    return tournaments.filter((tournament) => tournament.id !== featuredTournament.id);
-  }, [featuredTournament, tournaments]);
+        if (currentIsActive || activeTournaments.length === 0) {
+          return current;
+        }
+      }
+
+      return activeTournaments[0]?.id ?? tournaments[0]?.id ?? null;
+    });
+  }, [activeTournaments, tournaments]);
+
+  const featuredTournament = useMemo(
+    () =>
+      tournaments.find((tournament) => tournament.id === selectedTournamentId) ||
+      activeTournaments[0] ||
+      tournaments[0] ||
+      null,
+    [activeTournaments, selectedTournamentId, tournaments],
+  );
+
+  const pastTournaments = useMemo(() => {
+    return tournaments.filter((tournament) => tournament.status === 'completed' || tournament.status === 'cancelled');
+  }, [tournaments]);
 
   const canManageTournament = Boolean(userProfile?.isRoot);
+  const hasActiveAdminTournament = activeTournaments.some((tournament) => tournament.source === 'admin');
 
   const selectedMatch = useMemo(() => {
     if (!featuredTournament) {
@@ -329,11 +374,20 @@ export default function Tournaments() {
     setTournaments((current) => upsertTournament(current, nextTournament));
   };
 
+  const getTournamentSourceLabel = (source: Tournament['source']) => {
+    return source === 'admin' ? ui.adminSource : ui.systemSource;
+  };
+
+  const getTournamentSourceDescription = (tournament: Tournament) => {
+    return tournament.source === 'admin' ? ui.adminDescription : ui.systemDescription;
+  };
+
   const handleCreateTournament = async () => {
     setBusy(true);
     try {
       const created = await createTournament();
       replaceTournament(created);
+      setSelectedTournamentId(created.id);
       alert(ui.createSuccess);
     } catch (error) {
       console.error('Error creating tournament', error);
@@ -395,6 +449,7 @@ export default function Tournaments() {
     try {
       const updated = await cancelTournament(tournament.id);
       replaceTournament(updated);
+      await loadTournaments();
       alert(ui.cancelSuccess);
     } catch (error) {
       console.error('Error cancelling tournament', error);
@@ -411,6 +466,7 @@ export default function Tournaments() {
     try {
       const updated = await endTournament(tournament.id);
       replaceTournament(updated);
+      await loadTournaments();
       alert(t('play.endTournamentSuccess'));
     } catch (error) {
       console.error('Error ending tournament', error);
@@ -439,6 +495,9 @@ export default function Tournaments() {
       thirdPlaceId: finalized.thirdPlaceId,
     });
     replaceTournament(updated);
+    if (updated.status === 'completed') {
+      await loadTournaments();
+    }
     return updated;
   };
 
@@ -547,8 +606,92 @@ export default function Tournaments() {
   return (
     <div className="space-y-8">
       <section>
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+              {ui.activeTournaments}
+            </h2>
+            <p className={clsx('text-sm mt-1', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+              {ui.adminTournamentLimit}
+            </p>
+          </div>
+          {canManageTournament ? (
+            <button
+              onClick={() => void handleCreateTournament()}
+              disabled={busy || hasActiveAdminTournament}
+              className="inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <PlayCircle className="w-4 h-4" />
+              {ui.createTournament}
+            </button>
+          ) : null}
+        </div>
+
+        {activeTournaments.length > 0 ? (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {activeTournaments.map((tournament) => {
+              const isSelected = featuredTournament?.id === tournament.id;
+              const isRegistered = tournament.participants.includes(userProfile?.uid || '');
+
+              return (
+                <button
+                  key={tournament.id}
+                  type="button"
+                  onClick={() => setSelectedTournamentId(tournament.id)}
+                  className={clsx(
+                    'rounded-[2rem] border p-5 text-left transition-all',
+                    theme === 'dark'
+                      ? 'bg-zinc-900/55 border-white/6 hover:bg-zinc-900'
+                      : 'bg-white border-zinc-200 hover:bg-zinc-50 shadow-sm',
+                    isSelected &&
+                      (theme === 'dark'
+                        ? 'ring-2 ring-amber-500/40 border-amber-500/30'
+                        : 'ring-2 ring-amber-500/25 border-amber-300'),
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <span className={clsx('rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]', tournament.source === 'admin' ? 'bg-sky-500/10 text-sky-500' : 'bg-emerald-500/10 text-emerald-500')}>
+                          {getTournamentSourceLabel(tournament.source)}
+                        </span>
+                        <span className={clsx('rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'bg-white/6 text-zinc-300' : 'bg-zinc-100 text-zinc-600')}>
+                          {getTournamentStatusLabel(tournament.status)}
+                        </span>
+                        {isRegistered ? (
+                          <span className="rounded-full bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-500">
+                            {t('play.registered')}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className={clsx('text-xl font-black truncate', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                        {tournament.name || t('play.weeklyChampionship')}
+                      </div>
+                      <div className={clsx('mt-2 text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
+                        {getTournamentSourceDescription(tournament)}
+                      </div>
+                    </div>
+                    <ChevronRight className={clsx('w-5 h-5 shrink-0', isSelected ? 'text-amber-500' : 'text-zinc-500')} />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
+                    <span>{tournament.participants.length} {ui.participants}</span>
+                    <span>{format(new Date(tournament.startDate), 'MMM d')} - {format(new Date(tournament.endDate), 'MMM d')}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={clsx('rounded-3xl border p-6 text-center text-zinc-500', theme === 'dark' ? 'bg-zinc-900/40 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
+            {t('play.noActiveTournaments')}
+          </div>
+        )}
+      </section>
+
+      <section>
         <h2 className={clsx('text-lg font-bold mb-4', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-          {t('play.thisWeek')}
+          {ui.selectedTournament}
         </h2>
 
         <div className={clsx('border rounded-3xl p-6 relative overflow-hidden', theme === 'dark' ? 'bg-gradient-to-br from-amber-500/15 to-zinc-900/70 border-amber-500/25' : 'bg-gradient-to-br from-amber-50 to-white border-amber-200 shadow-sm')}>
@@ -561,6 +704,9 @@ export default function Tournaments() {
               <div>
                 <div className={clsx('inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4', theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700')}>
                   {getTournamentStatusLabel(featuredTournament.status)}
+                  <span className={clsx('rounded-full px-2 py-0.5', featuredTournament.source === 'admin' ? 'bg-sky-500/15 text-sky-500' : 'bg-emerald-500/15 text-emerald-500')}>
+                    {getTournamentSourceLabel(featuredTournament.source)}
+                  </span>
                   {canManageTournament ? <span className="rounded-full bg-black/10 px-2 py-0.5">{ui.rootBadge}</span> : null}
                 </div>
                 <h3 className={clsx('text-2xl font-black mb-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
@@ -576,7 +722,7 @@ export default function Tournaments() {
                     {featuredTournament.participants.length} {ui.participants}
                   </div>
                   <div className="flex items-center gap-1 text-emerald-500">
-                    <Shield className="w-4 h-4" /> {ui.startedByRoot}
+                    <Shield className="w-4 h-4" /> {getTournamentSourceDescription(featuredTournament)}
                   </div>
                 </div>
               </div>
@@ -885,10 +1031,10 @@ export default function Tournaments() {
             >
               <div>
                 <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                  {t('play.weekOf')} {format(new Date(tournament.startDate), 'MMM d, yyyy')}
+                  {tournament.name}
                 </div>
                 <div className="text-xs text-zinc-500 font-medium mt-1">
-                  {tournament.participants.length} {t('play.participants')} - {getTournamentStatusLabel(tournament.status)}
+                  {getTournamentSourceLabel(tournament.source)} · {tournament.participants.length} {t('play.participants')} · {getTournamentStatusLabel(tournament.status)}
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-zinc-400" />
@@ -899,18 +1045,6 @@ export default function Tournaments() {
           ) : null}
         </div>
       </section>
-
-      {canManageTournament && !tournaments.some((tournament) => tournament.status === 'registration' || tournament.status === 'ongoing') ? (
-        <div className="flex justify-end">
-          <button
-            onClick={() => void handleCreateTournament()}
-            disabled={busy}
-            className="rounded-2xl bg-amber-500 hover:bg-amber-400 text-zinc-950 px-6 py-3 font-bold transition-colors disabled:opacity-50"
-          >
-            {ui.createTournament}
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

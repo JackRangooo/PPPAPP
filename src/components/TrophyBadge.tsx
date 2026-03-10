@@ -43,23 +43,23 @@ export default function TrophyBadge({ trophy, theme, language }: TrophyBadgeProp
   return (
     <div
       className={clsx(
-        'relative h-full w-full overflow-hidden rounded-[1.2rem] border p-3 text-left',
+        'relative h-full w-full overflow-hidden rounded-[1.3rem] border p-3 text-left',
         `bg-gradient-to-br ${meta.shell} ${meta.line}`,
         theme === 'dark'
           ? 'shadow-[0_18px_35px_rgba(0,0,0,0.34)]'
           : 'shadow-[0_14px_30px_rgba(15,23,42,0.12)]',
       )}
     >
-      <div className="absolute inset-x-0 top-0 h-12 bg-white/30 blur-2xl" />
+      <div className="absolute inset-x-0 top-0 h-14 bg-white/35 blur-2xl" />
       <div className="relative z-10 flex h-full flex-col justify-between gap-3">
         <div className="flex items-start justify-between gap-3">
-          <PrizeIcon rank={trophy.rank} className="h-12 w-12 shrink-0" />
+          <PrizeIcon rank={trophy.rank} className="h-14 w-14 shrink-0" />
           <span className={clsx('rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em]', meta.chip)}>
             {rankLabel}
           </span>
         </div>
 
-        <div className={clsx('rounded-2xl border border-black/8 bg-white/35 p-3 backdrop-blur-sm', meta.text)}>
+        <div className={clsx('rounded-2xl border border-black/8 bg-white/40 p-3 backdrop-blur-sm', meta.text)}>
           <div className="text-[11px] font-black leading-tight line-clamp-2">{trophy.name}</div>
           <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] opacity-80 line-clamp-2">
             {trophy.tournamentName}

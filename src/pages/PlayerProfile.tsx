@@ -6,7 +6,7 @@ import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import PrizeIcon from '../components/PrizeIcon';
-import TrophyBadge from '../components/TrophyBadge';
+import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
 import { fetchPlayerProfile } from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
 import type { Trophy as TrophyType, UserProfile } from '../types';
@@ -98,39 +98,13 @@ export default function PlayerProfile() {
           <Trophy className="w-5 h-5 text-amber-500" /> {t('profile.trophyShowcase')}
         </h2>
 
-        <div className={clsx('border-x-8 border-t-8 rounded-t-3xl p-6 shadow-2xl relative', theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-zinc-100 border-zinc-300')}>
-          <div className="grid grid-cols-3 gap-4 relative z-10">
-            {(player.showcase || []).map((slot) => {
-              const trophy = player.inventory?.trophies?.find((currentTrophy) => currentTrophy.id === slot.trophyId);
-              return (
-                <div
-                  key={slot.slotId}
-                  onClick={() => trophy && setSelectedTrophy(trophy)}
-                  className={clsx(
-                    'aspect-square rounded-2xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all',
-                    trophy
-                      ? theme === 'dark'
-                        ? 'bg-zinc-950/50 border-amber-500/30 cursor-pointer hover:border-amber-500/60'
-                        : 'bg-white border-amber-500/30 cursor-pointer hover:border-amber-500/60 shadow-sm'
-                      : theme === 'dark'
-                        ? 'bg-zinc-950/20 border-white/5'
-                        : 'bg-zinc-50 border-zinc-200',
-                  )}
-                >
-                  {trophy ? (
-                    <div className="h-full w-full p-2">
-                      <TrophyBadge trophy={trophy} theme={theme} language={language} />
-                    </div>
-                  ) : (
-                    <Trophy className={clsx('w-8 h-8 opacity-5', theme === 'dark' ? 'text-zinc-700' : 'text-zinc-400')} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className={clsx('h-4 rounded-full mt-4 shadow-inner', theme === 'dark' ? 'bg-zinc-800' : 'bg-zinc-200')} />
-        </div>
-        <div className={clsx('h-6 rounded-b-3xl border-x-8 border-b-8 shadow-xl', theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-100 border-zinc-300')} />
+        <TrophyShowcaseCabinet
+          language={language}
+          theme={theme}
+          slots={player.showcase || []}
+          trophies={player.inventory?.trophies || []}
+          onSelectTrophy={setSelectedTrophy}
+        />
       </section>
 
       <div className="grid grid-cols-2 gap-4">

@@ -171,6 +171,7 @@ const mapTournament = (row: any): Tournament => ({
   id: row.id,
   name: row.name ?? 'Weekly Championship',
   status: row.status ?? 'registration',
+  source: row.source === 'admin' ? 'admin' : 'system',
   startDate: row.start_date ?? new Date().toISOString(),
   endDate: row.end_date ?? new Date().toISOString(),
   participants: Array.isArray(row.participants) ? row.participants : [],
@@ -375,7 +376,7 @@ export const listLeaderboardProfiles = async () => {
   const data = await callRpc<any[]>('list_leaderboard_profiles', {
     p_session_token: requireSessionToken(),
   });
-  return (data ?? []).map(mapProfile);
+  return (data ?? []).map(mapProfile).filter((profile) => !profile.isRoot);
 };
 
 export const listUserRecentMatches = async (_userId?: string, limit = 8) => {
@@ -447,6 +448,7 @@ export const createTournament = async (name?: string) => {
   const data = await callRpc<any>('create_tournament', {
     p_session_token: requireSessionToken(),
     p_name: name ?? null,
+    p_source: 'admin',
   });
   return mapTournament(data);
 };
@@ -554,6 +556,14 @@ export const purchaseShopItem = async (productId: string) => {
 
 export const adminResetUserProgress = async (userId: string) => {
   const data = await callRpc<any>('admin_reset_user_progress', {
+    p_session_token: requireSessionToken(),
+    p_user_id: userId,
+  });
+  return mapProfile(data);
+};
+
+export const adminDeleteUser = async (userId: string) => {
+  const data = await callRpc<any>('admin_delete_user', {
     p_session_token: requireSessionToken(),
     p_user_id: userId,
   });

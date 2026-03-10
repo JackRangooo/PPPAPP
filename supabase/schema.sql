@@ -155,6 +155,7 @@ create table if not exists public.tournaments (
   id uuid primary key default gen_random_uuid(),
   name text not null default 'Weekly Championship',
   status text not null default 'registration' check (status in ('registration', 'ongoing', 'completed')),
+  source text not null default 'system' check (source in ('system', 'admin')),
   start_date timestamptz not null default timezone('utc', now()),
   end_date timestamptz not null default timezone('utc', now()) + interval '7 days',
   participants uuid[] not null default '{}'::uuid[],
@@ -167,6 +168,11 @@ alter table public.tournaments drop constraint if exists tournaments_status_chec
 alter table public.tournaments
   add constraint tournaments_status_check
   check (status in ('registration', 'ongoing', 'completed', 'cancelled'));
+alter table public.tournaments add column if not exists source text not null default 'system';
+alter table public.tournaments drop constraint if exists tournaments_source_check;
+alter table public.tournaments
+  add constraint tournaments_source_check
+  check (source in ('system', 'admin'));
 alter table public.tournaments add column if not exists runner_up_id uuid references public.profiles (id) on delete set null;
 alter table public.tournaments add column if not exists third_place_id uuid references public.profiles (id) on delete set null;
 alter table public.tournaments add column if not exists admin_user_id uuid references public.profiles (id) on delete set null;
@@ -178,6 +184,15 @@ alter table public.tournaments add column if not exists rewards_granted boolean 
 update public.tournaments
 set format = 'single_elimination_third'
 where format is null or btrim(format) = '';
+
+update public.tournaments
+set source = case
+  when coalesce(name, '') = 'Weekly Championship' then 'system'
+  else 'admin'
+end
+where source is null
+   or btrim(source) = ''
+   or source not in ('system', 'admin');
 
 update public.tournaments
 set bracket = '{"size":0,"matches":[]}'::jsonb
@@ -878,6 +893,7 @@ begin
   return query
   select *
   from public.profiles
+  where not coalesce(is_root, false)
   order by casual_stars desc, ranked_points desc, casual_wins desc, created_at asc;
 end;
 $$;
@@ -1280,14 +1296,16 @@ begin
       casual_wins = casual_wins + 1,
       casual_stars = casual_stars + 1,
       inventory = public.append_title(inventory, 'Match Participant')
-    where id = v_winner_id;
+    where id = v_winner_id
+      and not coalesce(is_root, false);
 
     update public.profiles
     set
       casual_losses = casual_losses + 1,
       casual_stars = greatest(casual_stars - 1, 0),
       inventory = public.append_title(inventory, 'Match Participant')
-    where id = v_loser_id;
+    where id = v_loser_id
+      and not coalesce(is_root, false);
 
     v_result := 'completed';
     return jsonb_build_object('result', v_result, 'match', to_jsonb(v_updated_match));
@@ -1304,6 +1322,66 @@ begin
 
   v_result := 'reset';
   return jsonb_build_object('result', v_result, 'match', to_jsonb(v_updated_match));
+end;
+$$;
+
+create or replace function public.ensure_system_tournament()
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_tournament public.tournaments;
+  v_tournament_id uuid := extensions.gen_random_uuid();
+begin
+  select *
+  into v_tournament
+  from public.tournaments
+  where source = 'system'
+    and status in ('registration', 'ongoing')
+  order by start_date desc
+  limit 1;
+
+  if v_tournament.id is not null then
+    return v_tournament;
+  end if;
+
+  insert into public.tournaments (
+    id,
+    name,
+    status,
+    source,
+    start_date,
+    end_date,
+    format,
+    bracket,
+    timeline
+  )
+  values (
+    v_tournament_id,
+    'Weekly Championship',
+    'registration',
+    'system',
+    timezone('utc', now()),
+    timezone('utc', now()) + interval '7 days',
+    'single_elimination_third',
+    '{"size":0,"matches":[]}'::jsonb,
+    jsonb_build_array(
+      jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'type', 'registration_opened',
+        'title', 'Weekly Championship registration is open',
+        'description', 'Players can join the system bracket now.',
+        'createdAt', timezone('utc', now()),
+        'tournamentId', v_tournament_id,
+        'matchId', null
+      )
+    )
+  )
+  returning * into v_tournament;
+
+  return v_tournament;
 end;
 $$;
 
@@ -1328,7 +1406,12 @@ begin
     case status
       when 'registration' then 0
       when 'ongoing' then 1
-      else 2
+      when 'completed' then 2
+      else 3
+    end,
+    case source
+      when 'system' then 0
+      else 1
     end,
     start_date desc;
 end;
@@ -1377,6 +1460,8 @@ begin
   where id = p_tournament_id
   returning * into v_tournament;
 
+  perform public.ensure_system_tournament();
+
   return v_tournament;
 end;
 $$;
@@ -1424,6 +1509,7 @@ declare
   v_coin_reward integer;
   v_points integer;
   v_trophy jsonb;
+  v_participant_is_root boolean;
 begin
   select *
   into v_tournament
@@ -1445,6 +1531,15 @@ begin
 
   foreach v_participant in array coalesce(v_tournament.participants, '{}'::uuid[])
   loop
+    select coalesce(is_root, false)
+    into v_participant_is_root
+    from public.profiles
+    where id = v_participant;
+
+    if coalesce(v_participant_is_root, false) then
+      continue;
+    end if;
+
     select max((match.value ->> 'round')::integer)
     into v_elimination_round
     from jsonb_array_elements(coalesce(v_tournament.bracket -> 'matches', '[]'::jsonb)) as match(value)
@@ -1515,20 +1610,7 @@ begin
   where id = p_tournament_id
   returning * into v_tournament;
 
-  if not exists (
-    select 1
-    from public.tournaments
-    where id <> p_tournament_id
-      and status in ('registration', 'ongoing')
-  ) then
-    insert into public.tournaments (name, status, start_date, end_date)
-    values (
-      'Weekly Championship',
-      'registration',
-      timezone('utc', now()),
-      timezone('utc', now()) + interval '7 days'
-    );
-  end if;
+  perform public.ensure_system_tournament();
 
   return v_tournament;
 end;
@@ -1636,9 +1718,11 @@ as $$
   select coalesce(p_existing_timeline, '[]'::jsonb) || jsonb_build_array(p_event);
 $$;
 
+drop function if exists public.create_tournament(text, text);
 create or replace function public.create_tournament(
   p_session_token text,
-  p_name text default null
+  p_name text default null,
+  p_source text default 'admin'
 )
 returns public.tournaments
 language plpgsql
@@ -1649,7 +1733,8 @@ declare
   v_requester public.profiles;
   v_tournament public.tournaments;
   v_tournament_id uuid := extensions.gen_random_uuid();
-  v_name text := coalesce(nullif(btrim(coalesce(p_name, '')), ''), 'Weekly Championship');
+  v_source text := case when p_source in ('system', 'admin') then p_source else 'admin' end;
+  v_name text;
 begin
   v_requester := public.current_profile_from_session(p_session_token, false);
 
@@ -1657,18 +1742,26 @@ begin
     raise exception 'Only the root admin can create a tournament.';
   end if;
 
+  if v_source = 'system' then
+    return public.ensure_system_tournament();
+  end if;
+
+  v_name := coalesce(nullif(btrim(coalesce(p_name, '')), ''), 'Admin Spotlight Cup');
+
   if exists (
     select 1
     from public.tournaments
     where status in ('registration', 'ongoing')
+      and source = v_source
   ) then
-    raise exception 'Finish or cancel the active tournament before creating a new one.';
+    raise exception 'Finish or cancel the active % tournament before creating a new one.', v_source;
   end if;
 
   insert into public.tournaments (
     id,
     name,
     status,
+    source,
     start_date,
     end_date,
     admin_user_id,
@@ -1680,6 +1773,7 @@ begin
     v_tournament_id,
     v_name,
     'registration',
+    v_source,
     timezone('utc', now()),
     timezone('utc', now()) + interval '7 days',
     v_requester.id,
@@ -2147,6 +2241,80 @@ begin
   return v_target;
 end;
 $$;
+
+create or replace function public.admin_delete_user(
+  p_session_token text,
+  p_user_id uuid
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_target public.profiles;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can delete users.';
+  end if;
+
+  if p_user_id is null then
+    raise exception 'Choose a user to delete.';
+  end if;
+
+  if p_user_id = v_requester.id then
+    raise exception 'Do not delete your own root account here.';
+  end if;
+
+  select *
+  into v_target
+  from public.profiles
+  where id = p_user_id
+  for update;
+
+  if v_target.id is null then
+    raise exception 'User not found.';
+  end if;
+
+  if coalesce(v_target.is_root, false) then
+    raise exception 'Delete non-root test accounts only.';
+  end if;
+
+  if exists (
+    select 1
+    from public.tournaments
+    where status = 'ongoing'
+      and (
+        p_user_id = any(participants)
+        or winner_id = p_user_id
+        or runner_up_id = p_user_id
+        or third_place_id = p_user_id
+        or admin_user_id = p_user_id
+      )
+  ) then
+    raise exception 'Cannot delete a user who is still part of an ongoing tournament.';
+  end if;
+
+  update public.tournaments
+  set participants = array_remove(participants, p_user_id)
+  where p_user_id = any(participants);
+
+  delete from public.profiles
+  where id = p_user_id
+  returning * into v_target;
+
+  if v_target.id is null then
+    raise exception 'User not found.';
+  end if;
+
+  perform public.ensure_system_tournament();
+
+  return v_target;
+end;
+$$;
 grant execute on function public.register_with_password(text, text) to anon, authenticated;
 grant execute on function public.login_with_password(text, text) to anon, authenticated;
 grant execute on function public.restore_password_session(text) to anon, authenticated;
@@ -2168,25 +2336,16 @@ grant execute on function public.submit_match_score(text, uuid, integer, integer
 grant execute on function public.list_tournaments_for_user(text) to anon, authenticated;
 grant execute on function public.register_for_tournament(text, uuid) to anon, authenticated;
 grant execute on function public.end_tournament(text, uuid) to anon, authenticated;
-grant execute on function public.create_tournament(text, text) to anon, authenticated;
+grant execute on function public.create_tournament(text, text, text) to anon, authenticated;
 grant execute on function public.start_tournament(text, uuid, jsonb, jsonb) to anon, authenticated;
 grant execute on function public.save_tournament_progress(text, uuid, uuid, jsonb, jsonb, text, uuid, uuid, uuid) to anon, authenticated;
 grant execute on function public.cancel_tournament(text, uuid) to anon, authenticated;
 grant execute on function public.list_tournament_match_comments(text, uuid, uuid) to anon, authenticated;
 grant execute on function public.create_tournament_match_comment(text, uuid, uuid, text) to anon, authenticated;
 grant execute on function public.admin_reset_user_progress(text, uuid) to anon, authenticated;
+grant execute on function public.admin_delete_user(text, uuid) to anon, authenticated;
 
-insert into public.tournaments (name, status, start_date, end_date)
-select
-  'Weekly Championship',
-  'registration',
-  timezone('utc', now()),
-  timezone('utc', now()) + interval '7 days'
-where not exists (
-  select 1
-  from public.tournaments
-  where status in ('registration', 'ongoing')
-);
+select public.ensure_system_tournament();
 
 
 

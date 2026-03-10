@@ -22,7 +22,9 @@ import clsx from 'clsx';
 import { useAuth } from '../App';
 import PrizeIcon from '../components/PrizeIcon';
 import ProfileInventorySheet, { type InventoryTab } from '../components/ProfileInventorySheet';
+import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
 import {
+  adminDeleteUser,
   adminResetUserProgress,
   listProfiles,
   listShopProducts,
@@ -36,26 +38,34 @@ import { useTranslation } from '../i18n';
 const adminCopy = {
   en: {
     title: 'Admin Control',
-    subtitle: 'Reset a player back to a clean account state. This also wipes their match history and revokes active sessions.',
+    subtitle: 'Root data is now test-only and excluded from rankings. Reset clears a player back to a clean account state and revokes active sessions.',
     searchPlaceholder: 'Search players to reset...',
     noUsers: 'No other players found.',
     resetAction: 'Reset User',
+    deleteAction: 'Delete User',
     resetConfirm: 'Reset this player? Their stats, coins, inventory, sessions, and match records will be cleared.',
+    deleteConfirm: 'Delete this user completely? This removes the account, sessions, and related match records.',
     resetSuccess: 'Player data was cleared.',
+    deleteSuccess: 'User account was deleted.',
     resetFailed: 'Could not reset this player.',
+    deleteFailed: 'Could not delete this user.',
     rootBadge: 'Root Admin',
     openShop: 'Open Shop',
     openBackpack: 'Open Backpack',
   },
   zh: {
     title: '管理员控制台',
-    subtitle: '把某个玩家重置回干净账号状态，同时清掉比赛记录并注销该用户当前会话。',
+    subtitle: 'root 数据现在只用于测试，不会进入排行榜。重置会把玩家恢复成干净账号，并注销该用户当前会话。',
     searchPlaceholder: '搜索要重置的玩家...',
     noUsers: '暂时没有其他玩家。',
     resetAction: '清除数据',
+    deleteAction: '删除用户',
     resetConfirm: '确认重置这个玩家吗？他的积分、金币、背包、会话和比赛记录都会被清空。',
+    deleteConfirm: '确认彻底删除这个用户吗？账号、会话和相关比赛记录都会被移除。',
     resetSuccess: '玩家数据已清除。',
+    deleteSuccess: '用户已删除。',
     resetFailed: '清除玩家数据失败。',
+    deleteFailed: '删除用户失败。',
     rootBadge: 'Root 管理员',
     openShop: '打开商店',
     openBackpack: '打开背包',
@@ -78,6 +88,7 @@ export default function Profile() {
   const [adminUsers, setAdminUsers] = useState<UserProfile[]>([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [adminBusyUserId, setAdminBusyUserId] = useState<string | null>(null);
+  const [adminBusyAction, setAdminBusyAction] = useState<'reset' | 'delete' | null>(null);
 
   useEffect(() => {
     setNewName(userProfile?.displayName ?? '');
@@ -212,6 +223,7 @@ export default function Profile() {
     }
 
     setAdminBusyUserId(targetUser.uid);
+    setAdminBusyAction('reset');
     try {
       await adminResetUserProgress(targetUser.uid);
       await loadAdminUsers();
@@ -221,6 +233,27 @@ export default function Profile() {
       alert(error instanceof Error && error.message.trim() ? error.message : adminUi.resetFailed);
     } finally {
       setAdminBusyUserId(null);
+      setAdminBusyAction(null);
+    }
+  };
+
+  const handleAdminDelete = async (targetUser: UserProfile) => {
+    if (!window.confirm(adminUi.deleteConfirm)) {
+      return;
+    }
+
+    setAdminBusyUserId(targetUser.uid);
+    setAdminBusyAction('delete');
+    try {
+      await adminDeleteUser(targetUser.uid);
+      await loadAdminUsers();
+      alert(adminUi.deleteSuccess);
+    } catch (error) {
+      console.error('Failed to delete player', error);
+      alert(error instanceof Error && error.message.trim() ? error.message : adminUi.deleteFailed);
+    } finally {
+      setAdminBusyUserId(null);
+      setAdminBusyAction(null);
     }
   };
 
@@ -365,41 +398,14 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className={clsx('border-x-8 border-t-8 rounded-t-3xl p-6 shadow-2xl relative', theme === 'dark' ? 'bg-zinc-900/80 border-zinc-800' : 'bg-zinc-100 border-zinc-300')}>
-          <div className="grid grid-cols-3 gap-4 relative z-10">
-            {(userProfile.showcase || []).map((slot) => {
-              const trophy = userProfile.inventory?.trophies?.find((currentTrophy) => currentTrophy.id === slot.trophyId);
-              return (
-                <div
-                  key={slot.slotId}
-                  onClick={() => (trophy ? setSelectedTrophy(trophy) : setIsInventoryOpen(true))}
-                  className={clsx(
-                    'aspect-square rounded-2xl border-2 border-dashed overflow-hidden flex items-center justify-center transition-all cursor-pointer group',
-                    trophy
-                      ? theme === 'dark'
-                        ? 'bg-zinc-950/50 border-amber-500/30 hover:border-amber-500/60'
-                        : 'bg-white border-amber-500/30 hover:border-amber-500/60 shadow-sm'
-                      : theme === 'dark'
-                        ? 'bg-zinc-950/20 border-white/5 hover:bg-zinc-950/40 hover:border-white/10'
-                        : 'bg-white/50 border-zinc-200 hover:bg-white hover:border-zinc-300',
-                  )}
-                >
-                  {trophy ? (
-                    <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="h-full w-full p-2">
-                      <PrizeIcon rank={trophy.rank} className="h-full w-full" />
-                    </motion.div>
-                  ) : (
-                    <div className="text-zinc-700 group-hover:text-zinc-500 transition-colors">
-                      <Trophy className="w-8 h-8 opacity-20" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div className={clsx('h-4 rounded-full mt-4 shadow-inner', theme === 'dark' ? 'bg-zinc-800' : 'bg-zinc-300')} />
-        </div>
-        <div className={clsx('h-6 rounded-b-3xl border-x-8 border-b-8 shadow-xl', theme === 'dark' ? 'bg-zinc-900 border-zinc-800' : 'bg-zinc-200 border-zinc-300')} />
+        <TrophyShowcaseCabinet
+          language={language}
+          theme={theme}
+          slots={userProfile.showcase || []}
+          trophies={userProfile.inventory?.trophies || []}
+          onSelectTrophy={setSelectedTrophy}
+          onEmptySlotClick={() => setIsInventoryOpen(true)}
+        />
       </section>
 
       <div className="grid grid-cols-2 gap-4">
@@ -485,19 +491,29 @@ export default function Profile() {
                         {player.displayName}
                       </div>
                       <div className={clsx('text-xs font-medium mt-1 truncate', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                        @{player.nickname} · {player.coins} coins · {player.rankedPoints} pts
+                        @{player.nickname} / {player.coins} coins / {player.rankedPoints} pts
                       </div>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => void handleAdminReset(player)}
-                    disabled={adminBusyUserId === player.uid}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-red-500 font-black hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {adminUi.resetAction}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => void handleAdminReset(player)}
+                      disabled={adminBusyUserId === player.uid}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-amber-500/10 px-4 py-3 text-amber-500 font-black hover:bg-amber-500 hover:text-zinc-950 transition-colors disabled:opacity-50"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      {adminBusyUserId === player.uid && adminBusyAction === 'reset' ? '...' : adminUi.resetAction}
+                    </button>
+                    <button
+                      onClick={() => void handleAdminDelete(player)}
+                      disabled={adminBusyUserId === player.uid}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-red-500/10 px-4 py-3 text-red-500 font-black hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {adminBusyUserId === player.uid && adminBusyAction === 'delete' ? '...' : adminUi.deleteAction}
+                    </button>
+                  </div>
                 </div>
               ))
             )}

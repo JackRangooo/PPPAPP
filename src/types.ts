@@ -9,6 +9,7 @@ export type MatchStatus =
   | 'cancelled';
 export type MatchType = 'casual' | 'ranked';
 export type TournamentStatus = 'registration' | 'ongoing' | 'completed' | 'cancelled';
+export type TournamentSource = 'system' | 'admin';
 export type TournamentStage = 'quarterfinal' | 'semifinal' | 'third_place' | 'final';
 export type TournamentMatchStatus =
   | 'waiting'
@@ -153,6 +154,7 @@ export interface Tournament {
   id: string;
   name: string;
   status: TournamentStatus;
+  source: TournamentSource;
   startDate: string;
   endDate: string;
   participants: string[];
