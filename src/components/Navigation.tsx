@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+﻿import { NavLink } from 'react-router-dom';
 import { Home, Swords, User, Award } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -21,72 +21,53 @@ export default function Navigation() {
     <>
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-[120] md:hidden">
         <div
-          className="pointer-events-auto mx-auto mb-3 w-[min(94vw,26rem)] rounded-[2rem] border p-2 backdrop-blur-[30px] backdrop-saturate-150"
-          style={{ marginBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}
+          className={clsx(
+            'pointer-events-auto w-full rounded-t-[2rem] border-x border-t px-3 pt-2',
+            theme === 'dark'
+              ? 'border-white/8 bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(10,10,12,0.98))]'
+              : 'border-zinc-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(244,244,245,0.98))] shadow-[0_-8px_24px_rgba(15,23,42,0.06)]',
+          )}
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.45rem)' }}
         >
-          <div
-            className={clsx(
-              'relative overflow-hidden rounded-[1.6rem] border',
-              theme === 'dark'
-                ? 'border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] shadow-[0_20px_50px_rgba(0,0,0,0.38)]'
-                : 'border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.62))] shadow-[0_20px_50px_rgba(15,23,42,0.12)]',
-            )}
-          >
-            <div
-              className={clsx(
-                'pointer-events-none absolute inset-x-6 top-1 h-9 rounded-full blur-2xl',
-                theme === 'dark' ? 'bg-white/20' : 'bg-white/90',
-              )}
-            />
-            <div
-              className={clsx(
-                'pointer-events-none absolute inset-0',
-                theme === 'dark'
-                  ? 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_55%)]'
-                  : 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),transparent_55%)]',
-              )}
-            />
-
-            <ul className="relative grid grid-cols-4 gap-1">
-              {links.map(({ to, icon: Icon, label }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    className={({ isActive }) =>
-                      clsx(
-                        'flex min-h-[4.4rem] flex-col items-center justify-center rounded-[1.3rem] px-2 py-2 transition-all',
-                        isActive
-                          ? theme === 'dark'
-                            ? 'bg-white/10 text-emerald-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-                            : 'bg-white/80 text-emerald-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]'
-                          : theme === 'dark'
-                            ? 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                            : 'text-zinc-500 hover:bg-white/55 hover:text-zinc-900',
-                      )
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <span
-                          className={clsx(
-                            'mb-1.5 flex h-9 w-9 items-center justify-center rounded-full transition-all',
-                            isActive
-                              ? theme === 'dark'
-                                ? 'bg-emerald-500/14 text-emerald-400'
-                                : 'bg-emerald-500/12 text-emerald-600'
-                              : 'bg-transparent',
-                          )}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        <span className="text-[10px] font-semibold tracking-[0.12em]">{label}</span>
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ul className="grid grid-cols-4 gap-1">
+            {links.map(({ to, icon: Icon, label }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  className={({ isActive }) =>
+                    clsx(
+                      'flex min-h-[4.35rem] flex-col items-center justify-center rounded-[1.2rem] px-2 py-2 transition-all',
+                      isActive
+                        ? theme === 'dark'
+                          ? 'bg-white/9 text-emerald-400'
+                          : 'bg-white text-emerald-600 shadow-[0_6px_16px_rgba(15,23,42,0.08)]'
+                        : theme === 'dark'
+                          ? 'text-zinc-400 hover:bg-white/4 hover:text-white'
+                          : 'text-zinc-500 hover:bg-white/70 hover:text-zinc-900',
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span
+                        className={clsx(
+                          'mb-1.5 flex h-9 w-9 items-center justify-center rounded-full transition-all',
+                          isActive
+                            ? theme === 'dark'
+                              ? 'bg-emerald-500/14 text-emerald-400'
+                              : 'bg-emerald-500/12 text-emerald-600'
+                            : 'bg-transparent',
+                        )}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-[10px] font-semibold tracking-[0.12em]">{label}</span>
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
         </div>
       </nav>
 
@@ -133,3 +114,4 @@ export default function Navigation() {
     </>
   );
 }
+

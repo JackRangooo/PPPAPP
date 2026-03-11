@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Check,
@@ -132,31 +132,31 @@ const copy = {
 const bubbleTheme = {
   dark: {
     shell:
-      'border-white/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.05))] text-white shadow-[0_26px_70px_rgba(0,0,0,0.42)]',
+      'border-white/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] text-white shadow-[0_30px_80px_rgba(2,6,23,0.42)]',
     panel:
-      'border-white/15 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))] text-white shadow-[0_30px_90px_rgba(0,0,0,0.46)]',
-    card: 'border-white/10 bg-zinc-950/42',
-    button: 'border-white/10 bg-white/6 hover:bg-white/10',
-    muted: 'text-zinc-400',
-    input: 'border-white/10 bg-zinc-950/74 text-white',
-    shine: 'bg-white/18',
-    glow: 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_58%)]',
+      'border-white/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.07))] text-white shadow-[0_32px_100px_rgba(2,6,23,0.46)]',
+    card: 'border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.04))]',
+    button: 'border-white/14 bg-white/8 hover:bg-white/14',
+    muted: 'text-zinc-300',
+    input: 'border-white/14 bg-white/10 text-white',
+    shine: 'bg-[linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0.12),rgba(255,255,255,0.28))]',
+    glow: 'bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.22),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_40%)]',
   },
   light: {
     shell:
-      'border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(255,255,255,0.65))] text-zinc-900 shadow-[0_24px_60px_rgba(15,23,42,0.14)]',
+      'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.52),rgba(240,244,255,0.26))] text-zinc-900 shadow-[0_24px_60px_rgba(15,23,42,0.16)]',
     panel:
-      'border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,0.72))] text-zinc-900 shadow-[0_28px_80px_rgba(15,23,42,0.16)]',
-    card: 'border-white/90 bg-white/58',
-    button: 'border-zinc-200/80 bg-white/72 hover:bg-white',
+      'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.56),rgba(236,242,255,0.28))] text-zinc-900 shadow-[0_28px_80px_rgba(15,23,42,0.18)]',
+    card: 'border-white/50 bg-[linear-gradient(135deg,rgba(255,255,255,0.42),rgba(241,245,255,0.24))]',
+    button: 'border-white/55 bg-white/38 hover:bg-white/52',
     muted: 'text-zinc-500',
-    input: 'border-zinc-200 bg-white/92 text-zinc-900',
-    shine: 'bg-white/90',
-    glow: 'bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),transparent_58%)]',
+    input: 'border-white/55 bg-white/44 text-zinc-900',
+    shine: 'bg-[linear-gradient(90deg,rgba(255,255,255,0.95),rgba(255,255,255,0.5),rgba(255,255,255,0.88))]',
+    glow: 'bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.18),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(192,132,252,0.16),transparent_38%)]',
   },
 } as const;
 
-const POLL_MS = 1800;
+const POLL_MS = 1200;
 
 const casualStatusTone = {
   incoming: 'bg-emerald-500/12 text-emerald-500',
@@ -605,13 +605,14 @@ export default function GlobalMessageQueue() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={clsx(
-          'fixed right-4 z-[130] flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[34px] backdrop-saturate-150 transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
-          'bottom-[calc(env(safe-area-inset-bottom)+6rem)]',
+          'fixed right-4 z-[130] flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
+          'bottom-[calc(env(safe-area-inset-bottom)+7.25rem)]',
           tones.shell,
         )}
       >
         <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full blur-2xl', tones.shine)} />
         <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
+        <span className="pointer-events-none absolute inset-[1px] rounded-[1.7rem] border border-white/12" />
         <MessageSquareMore className="relative z-10 h-6 w-6" />
         {queueItems.length > 0 ? (
           <span className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-500 px-1 text-[11px] font-black text-zinc-950">
@@ -628,12 +629,13 @@ export default function GlobalMessageQueue() {
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             className={clsx(
               'fixed right-4 z-[129] w-[min(92vw,420px)] overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-8',
-              'bottom-[calc(env(safe-area-inset-bottom)+11rem)]',
+              'bottom-[calc(env(safe-area-inset-bottom)+12.2rem)]',
               tones.panel,
             )}
           >
             <span className={clsx('pointer-events-none absolute inset-x-10 top-2 h-12 rounded-full blur-3xl', tones.shine)} />
             <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
+            <span className="pointer-events-none absolute inset-[1px] rounded-[1.95rem] border border-white/12" />
             <div className={clsx('border-b px-5 py-4', theme === 'dark' ? 'border-white/10' : 'border-white/60')}>
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -875,3 +877,4 @@ export default function GlobalMessageQueue() {
     </>
   );
 }
+

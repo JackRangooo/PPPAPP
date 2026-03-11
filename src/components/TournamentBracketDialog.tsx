@@ -1,4 +1,4 @@
-import { Minus, Plus, RotateCcw, X } from 'lucide-react';
+﻿import { Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
@@ -106,7 +106,7 @@ export default function TournamentBracketDialog({
 
   const zoomLabel = `${Math.round(zoom * 100)}%`;
   const mobileHint =
-    language === 'zh' ? '已按横向长图模式优化，可双指缩放查看' : 'Optimized for landscape viewing';
+    language === 'zh' ? '已按横向长图模式优化，可在窗口内双指缩放查看' : 'Optimized for landscape viewing';
   const rotatedWidth = Math.max(viewport.height - 112, 540);
   const rotatedHeight = Math.max(viewport.width - 24, 320);
 
@@ -264,10 +264,11 @@ export default function TournamentBracketDialog({
                     'h-full rounded-[1.85rem] border p-2.5 sm:p-4',
                     theme === 'dark' ? 'border-white/6 bg-zinc-900/60' : 'border-zinc-200 bg-zinc-50',
                   )}
+                  style={{ touchAction: 'none' }}
                 >
-                  <div className="relative h-full overflow-hidden rounded-[1.35rem]">
+                  <div className="relative h-full overflow-hidden rounded-[1.35rem]" style={{ touchAction: 'none' }}>
                     {isPortraitMobile ? (
-                      <div className="absolute inset-0 overflow-hidden">
+                      <div className="absolute inset-0 overflow-hidden" style={{ touchAction: 'none' }}>
                         <div
                           className={clsx(
                             'absolute left-1/2 top-1/2 overflow-hidden rounded-[1.75rem] border p-2.5 shadow-[0_26px_70px_rgba(2,6,23,0.34)]',
@@ -277,6 +278,7 @@ export default function TournamentBracketDialog({
                             width: `${rotatedWidth}px`,
                             height: `${rotatedHeight}px`,
                             transform: 'translate(-50%, -50%) rotate(90deg)',
+                            touchAction: 'none',
                           }}
                         >
                           {bracketCanvas}
@@ -295,3 +297,4 @@ export default function TournamentBracketDialog({
     </AnimatePresence>
   );
 }
+

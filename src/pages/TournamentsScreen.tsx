@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Bell, Calendar, ChevronRight, MessageSquare, Shield, Sparkles, Trophy as TrophyIcon, Users } from 'lucide-react';
+import { Calendar, ChevronRight, MessageSquare, Shield, Sparkles, Trophy as TrophyIcon, Users } from 'lucide-react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
@@ -51,8 +51,6 @@ const copy = {
     commentsLocked: 'Comments unlock after the match is completed.',
     noBracket: 'Generate the bracket once registration is complete.',
     tournamentCancelled: 'This tournament was cancelled.',
-    matchAlert: 'Your next tournament match is ready.',
-    matchAlertSubtitle: 'Use the floating message bubble to confirm readiness and submit scores.',
     minPlayersHint: 'Need at least 4 players and at most 8 players before the event can start.',
     registrationClosed: 'Registration closes as soon as the bracket is generated.',
     createSuccess: 'Tournament created.',
@@ -67,11 +65,9 @@ const copy = {
     noPreviewCta: 'System tournaments refresh weekly.',
     cardSummaryRegistration: 'Single-elimination bracket with a third-place match.',
     cardSummaryOngoing: 'Bracket is live. Open the viewer to track advancement.',
-    messageCenterTitle: 'Match Message Center',
-    messageCenterDescription: 'Casual challenges and tournament score reporting are now handled by the floating glass bubble.',
   },
   zh: {
-    hub: '排位赛赛事大厅',
+    hub: '排位赛事大厅',
     hubSubtitle: '系统赛和管理员赛可以同时存在，先选分区，再进入对应赛事。',
     registrationTab: '报名中',
     ongoingTab: '开展中',
@@ -94,7 +90,7 @@ const copy = {
     viewBracket: '打开对阵表',
     bracketTitle: '实时对阵表',
     closeBracket: '关闭',
-    bracketHint: '对阵表会优先按横屏模式查看，并支持缩放。',
+    bracketHint: '对阵表会优先按横向长图模式查看，并支持缩放。',
     rootOnly: '发布、生成对阵、取消和紧急结算都由 root 管理员控制。',
     participants: '球员',
     registeredListTitle: '已报名球员',
@@ -105,8 +101,6 @@ const copy = {
     commentsLocked: '只有比赛完成后才能评论。',
     noBracket: '报名结束后，由管理员生成正式对阵表。',
     tournamentCancelled: '这场锦标赛已取消。',
-    matchAlert: '你的下一场锦标赛已经排好。',
-    matchAlertSubtitle: '准备确认和比分提交已经移到右下角的悬浮消息气泡中。',
     minPlayersHint: '至少 4 人、最多 8 人后才能正式开赛。',
     registrationClosed: '正式生成对阵后将停止报名。',
     createSuccess: '赛事已创建。',
@@ -121,8 +115,6 @@ const copy = {
     noPreviewCta: '系统赛会按周自动刷新。',
     cardSummaryRegistration: '正式单败淘汰赛，包含季军赛。',
     cardSummaryOngoing: '对阵已经开始，打开对阵表即可查看实时晋级。',
-    messageCenterTitle: '比赛消息中心',
-    messageCenterDescription: '娱乐局挑战和锦标赛比分提交都已经转移到悬浮玻璃消息气泡里处理。',
   },
 } as const;
 
@@ -176,7 +168,6 @@ export default function TournamentsScreen() {
   const previewCard = useMemo(() => buildTournamentPreviewCard(ui.previewTitle, ui.previewDescription), [ui.previewDescription, ui.previewTitle]);
   const featuredTournament = lane === 'preview' ? null : visibleTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? visibleTournaments[0] ?? activeTournaments[0] ?? null;
   const selectedMatch = featuredTournament?.bracket.matches.find((match) => match.id === selectedMatchId) ?? featuredTournament?.bracket.matches.find((match) => userProfile && (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid)) ?? featuredTournament?.bracket.matches[0] ?? null;
-  const myActiveMatch = featuredTournament?.bracket.matches.find((match) => userProfile && (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid) && (match.status === 'pending' || match.status === 'ongoing' || match.status === 'waiting_confirmation')) ?? null;
   const canManageTournament = Boolean(userProfile?.isRoot);
   const hasActiveAdminTournament = activeTournaments.some((tournament) => tournament.source === 'admin');
 
@@ -192,9 +183,9 @@ export default function TournamentsScreen() {
     }
     setSelectedMatchId((current) => {
       if (current && featuredTournament.bracket.matches.some((match) => match.id === current)) return current;
-      return myActiveMatch?.id ?? featuredTournament.bracket.matches[0]?.id ?? null;
+      return featuredTournament.bracket.matches[0]?.id ?? null;
     });
-  }, [featuredTournament, myActiveMatch]);
+  }, [featuredTournament]);
 
   useEffect(() => {
     if (!featuredTournament || !selectedMatch || (selectedMatch.status !== 'completed' && selectedMatch.status !== 'walkover')) {
@@ -385,43 +376,19 @@ export default function TournamentsScreen() {
                   </div>
                 </div>
               </section>
-
-              {myActiveMatch ? <section className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/8' : 'border-emerald-200 bg-emerald-50 shadow-sm')}><div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-500">{ui.matchAlert}</div><div className={clsx('mt-2 text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{ui.matchAlertSubtitle}</div></section> : null}
-
-              <section className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                <div className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
-                  <div className="mb-4 flex items-center gap-2"><Users className="h-5 w-5 text-amber-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.registeredListTitle}</h2></div>
-                  <div className="flex flex-wrap gap-2">
-                    {featuredTournament.participants.map((participantId) => {
-                      const profile = profilesById[participantId];
-                      if (!profile) return null;
-                      return <div key={profile.uid} className={clsx('inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold', theme === 'dark' ? 'border-white/5 bg-zinc-950/70 text-zinc-200' : 'border-zinc-200 bg-zinc-50 text-zinc-700')}><img src={profile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName)}&background=random`} alt={profile.displayName} className="h-6 w-6 rounded-full object-cover object-center" referrerPolicy="no-referrer" /><span>{profile.displayName}</span></div>;
-                    })}
-                  </div>
-                </div>
-                <TournamentPodium theme={theme} language={language} entries={podium.podiumEntries} standings={podium.standings} />
-              </section>
-
-              <section className="grid gap-6 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
-                <div className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
-                  <div className="mb-4 flex items-center gap-2"><Bell className="h-5 w-5 text-emerald-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.messageCenterTitle}</h2></div>
-                  <div className={clsx('rounded-[1.5rem] border px-4 py-4 text-sm leading-6', theme === 'dark' ? 'border-white/6 bg-zinc-950/60 text-zinc-300' : 'border-zinc-200 bg-zinc-50 text-zinc-700')}>{ui.messageCenterDescription}</div>
-                </div>
-
-                <div className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
-                  <div className="mb-4 flex items-center gap-2"><MessageSquare className="h-5 w-5 text-sky-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.matchComments}</h2></div>
-                  {selectedMatch && (selectedMatch.status === 'completed' || selectedMatch.status === 'walkover') ? (
-                    <div className="space-y-4">
-                      <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                        {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'M月d日 HH:mm' : 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
-                      </div>
-                      <div className="space-y-3">
-                        <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} placeholder={ui.commentPlaceholder} rows={4} className={clsx('w-full resize-none rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500/30', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400')} />
-                        <button onClick={() => void handlePostComment()} disabled={!commentBody.trim() || busy} className="rounded-2xl bg-sky-500 px-5 py-3 font-bold text-zinc-950 transition-colors hover:bg-sky-400 disabled:opacity-50">{ui.postComment}</button>
-                      </div>
+              <section className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
+                <div className="mb-4 flex items-center gap-2"><MessageSquare className="h-5 w-5 text-sky-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.matchComments}</h2></div>
+                {selectedMatch && (selectedMatch.status === 'completed' || selectedMatch.status === 'walkover') ? (
+                  <div className="space-y-4">
+                    <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
+                      {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'M月d日 HH:mm' : 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
                     </div>
-                  ) : <div className={clsx('rounded-2xl border p-4 text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-950/60 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-500')}>{ui.commentsLocked}</div>}
-                </div>
+                    <div className="space-y-3">
+                      <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} placeholder={ui.commentPlaceholder} rows={4} className={clsx('w-full resize-none rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500/30', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400')} />
+                      <button onClick={() => void handlePostComment()} disabled={!commentBody.trim() || busy} className="rounded-2xl bg-sky-500 px-5 py-3 font-bold text-zinc-950 transition-colors hover:bg-sky-400 disabled:opacity-50">{ui.postComment}</button>
+                    </div>
+                  </div>
+                ) : <div className={clsx('rounded-2xl border p-4 text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-950/60 text-zinc-400' : 'border-zinc-200 bg-zinc-50 text-zinc-500')}>{ui.commentsLocked}</div>}
               </section>
             </>
           ) : null}
@@ -437,3 +404,4 @@ export default function TournamentsScreen() {
     </div>
   );
 }
+
