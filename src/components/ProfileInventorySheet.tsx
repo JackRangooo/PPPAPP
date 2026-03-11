@@ -128,15 +128,19 @@ export default function ProfileInventorySheet({
   return (
     <AnimatePresence>
       {open ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center p-4">
+        <div className="fixed inset-0 z-[150] flex items-end justify-center p-3 sm:p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/80 backdrop-blur-md" />
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            className={clsx('relative w-full max-w-2xl rounded-t-[40px] p-8 max-h-[86vh] overflow-y-auto', theme === 'dark' ? 'bg-zinc-900' : 'bg-white')}
+            className={clsx(
+              'relative flex h-[min(46rem,calc(100vh-1.25rem))] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] p-6 sm:rounded-[40px] sm:p-8',
+              theme === 'dark' ? 'bg-zinc-900' : 'bg-white',
+            )}
+            style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
           >
-            <div className="flex items-center justify-between gap-4 mb-8">
+            <div className="mb-6 flex shrink-0 items-center justify-between gap-4 sm:mb-8">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
                   <Package className="w-6 h-6 text-emerald-500" />
@@ -156,7 +160,7 @@ export default function ProfileInventorySheet({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+            <div className="mb-6 grid shrink-0 grid-cols-2 gap-3 md:mb-8 md:grid-cols-4">
               {([
                 ['trophies', ui.trophies],
                 ['titles', ui.titles],
@@ -182,8 +186,9 @@ export default function ProfileInventorySheet({
               ))}
             </div>
 
+            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {inventoryTab === 'trophies' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {(userProfile.inventory?.trophies || []).map((currentTrophy) => (
                   <div
                     key={currentTrophy.id}
@@ -381,6 +386,7 @@ export default function ProfileInventorySheet({
                 )}
               </div>
             ) : null}
+            </div>
           </motion.div>
         </div>
       ) : null}

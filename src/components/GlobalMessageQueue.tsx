@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
+import { useLocation } from 'react-router-dom';
 
 import { useAuth } from '../App';
 import {
@@ -312,6 +313,7 @@ const buildTournamentQueueItem = (
 
 export default function GlobalMessageQueue() {
   const { userProfile, theme, language } = useAuth();
+  const location = useLocation();
   const ui = copy[language];
   const tones = bubbleTheme[theme];
   const badgeRing = theme === 'dark' ? 'ring-zinc-950/88' : 'ring-white/95';
@@ -460,6 +462,10 @@ export default function GlobalMessageQueue() {
       setOpen(false);
     }
   }, [queueItems.length]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [location.hash, location.pathname, location.search]);
 
   if (!userProfile) {
     return null;
