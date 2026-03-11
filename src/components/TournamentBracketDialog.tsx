@@ -1,5 +1,5 @@
-﻿import { Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
@@ -20,10 +20,6 @@ type TournamentBracketDialogProps = {
   onClose: () => void;
   onSelectMatch: (match: TournamentBracketMatch) => void;
 };
-
-const zoomStep = 0.1;
-const minZoom = 0.62;
-const maxZoom = 1.35;
 
 type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (
@@ -54,7 +50,6 @@ export default function TournamentBracketDialog({
   onClose,
   onSelectMatch,
 }: TournamentBracketDialogProps) {
-  const [zoom, setZoom] = useState(1);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -78,14 +73,6 @@ export default function TournamentBracketDialog({
     viewport.width > 0 && viewport.width < 820 && viewport.height > viewport.width;
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setZoom(isPortraitMobile ? 0.76 : viewport.width < 640 ? 0.74 : 1);
-  }, [isPortraitMobile, open, viewport.width]);
-
-  useEffect(() => {
     if (!open || typeof window === 'undefined') {
       return;
     }
@@ -104,22 +91,16 @@ export default function TournamentBracketDialog({
     };
   }, [open]);
 
-  const zoomLabel = `${Math.round(zoom * 100)}%`;
   const mobileHint =
-    language === 'zh' ? '已按横向长图模式优化，可在窗口内双指缩放查看' : 'Optimized for landscape viewing';
+    language === 'zh'
+      ? '已按横向长图模式优化，可在窗口内拖动查看完整对阵'
+      : 'Optimized for landscape viewing. Drag inside the viewer to explore the bracket.';
   const rotatedWidth = Math.max(viewport.height - 112, 540);
   const rotatedHeight = Math.max(viewport.width - 24, 320);
 
   const bracketCanvas = (
-    <div className="h-full overflow-auto rounded-[1.35rem]" style={{ touchAction: 'pan-x pan-y pinch-zoom' }}>
-      <div
-        className="origin-top-left pb-8"
-        style={{
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top left',
-          width: `calc(100% / ${zoom})`,
-        }}
-      >
+    <div className="h-full overflow-auto rounded-[1.35rem]" style={{ touchAction: 'pan-x pan-y' }}>
+      <div className="min-w-max pb-8">
         <TournamentBracket
           matches={tournament?.bracket.matches ?? []}
           selectedMatchId={selectedMatch?.id ?? null}
@@ -177,51 +158,6 @@ export default function TournamentBracketDialog({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <div
-                  className={clsx(
-                    'inline-flex items-center gap-1 rounded-2xl border px-2 py-2',
-                    theme === 'dark' ? 'border-white/10 bg-zinc-900' : 'border-zinc-200 bg-zinc-50',
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setZoom((current) => Math.max(minZoom, Number((current - zoomStep).toFixed(2))))
-                    }
-                    className={clsx(
-                      'rounded-xl p-2 transition-colors',
-                      theme === 'dark' ? 'text-zinc-300 hover:bg-zinc-800' : 'text-zinc-700 hover:bg-white',
-                    )}
-                    aria-label="Zoom out"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setZoom(isPortraitMobile ? 0.76 : viewport.width < 640 ? 0.74 : 1)}
-                    className={clsx(
-                      'rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.18em] transition-colors',
-                      theme === 'dark' ? 'text-zinc-300 hover:bg-zinc-800' : 'text-zinc-700 hover:bg-white',
-                    )}
-                  >
-                    <RotateCcw className="mr-1 inline h-3.5 w-3.5" />
-                    {zoomLabel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setZoom((current) => Math.min(maxZoom, Number((current + zoomStep).toFixed(2))))
-                    }
-                    className={clsx(
-                      'rounded-xl p-2 transition-colors',
-                      theme === 'dark' ? 'text-zinc-300 hover:bg-zinc-800' : 'text-zinc-700 hover:bg-white',
-                    )}
-                    aria-label="Zoom in"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-
                 <button
                   onClick={onClose}
                   className={clsx(
@@ -297,4 +233,3 @@ export default function TournamentBracketDialog({
     </AnimatePresence>
   );
 }
-

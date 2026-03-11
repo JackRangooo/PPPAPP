@@ -1,6 +1,7 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
+import { enUS, zhCN } from 'date-fns/locale';
 import { Activity, ArrowRight, Radio, Search, Star, Swords, Trophy, User, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
@@ -13,6 +14,100 @@ import type { Match, TournamentTimelineEvent, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
 const ACTIVITY_MATCH_LIMIT = 1000;
+
+const localizeBracketLabel = (language: 'en' | 'zh', value: string) => {
+  if (language === 'en') {
+    return value;
+  }
+
+  return value
+    .replace(/Grand Final/g, '决赛')
+    .replace(/Third Place Match/g, '季军赛')
+    .replace(/Quarterfinal\s+(\d+)/g, '四分之一决赛 $1')
+    .replace(/Qualifier\s+(\d+)/g, '资格赛 $1')
+    .replace(/Play-In\s+(\d+)/g, '附加赛 $1')
+    .replace(/Semifinal\s+(\d+)/g, '半决赛 $1');
+};
+
+const localizeTimelineTitle = (language: 'en' | 'zh', title: string) => {
+  if (language === 'en') {
+    return title;
+  }
+
+  let match = title.match(/^(.+) is ready$/);
+  if (match) {
+    return `${localizeBracketLabel(language, match[1])}已就绪`;
+  }
+
+  match = title.match(/^(.+) is live$/);
+  if (match) {
+    return `${localizeBracketLabel(language, match[1])}已开赛`;
+  }
+
+  match = title.match(/^(.+) advanced by walkover$/);
+  if (match) {
+    return `${localizeBracketLabel(language, match[1])}轮空晋级`;
+  }
+
+  match = title.match(/^(.+) won (.+)$/);
+  if (match) {
+    return `${match[1]}赢下${localizeBracketLabel(language, match[2])}`;
+  }
+
+  match = title.match(/^(.+) was cancelled$/);
+  if (match) {
+    return `${match[1]}已取消`;
+  }
+
+  return localizeBracketLabel(language, title);
+};
+
+const localizeTimelineDescription = (language: 'en' | 'zh', description: string) => {
+  if (language === 'en') {
+    return description;
+  }
+
+  let match = description.match(/^(\d+) players entered a (\d+)-slot bracket\.$/);
+  if (match) {
+    return `${match[1]} 名球员进入了 ${match[2]} 人淘汰赛对阵。`;
+  }
+
+  match = description.match(/^(.+) and (.+) are ready to play\.$/);
+  if (match) {
+    return `${match[1]} 和 ${match[2]} 都已就绪，比赛可以开始。`;
+  }
+
+  match = description.match(/^(.+) moved on from (.+) without playing\.$/);
+  if (match) {
+    return `${match[1]} 无需比赛，直接从 ${match[2]} 处晋级。`;
+  }
+
+  match = description.match(/^(.+) beat (.+) in (.+)\.$/);
+  if (match) {
+    return `${match[1]} 在${localizeBracketLabel(language, match[3])}中击败了 ${match[2]}。`;
+  }
+
+  if (description === 'The root admin closed this event before it finished.') {
+    return 'root 管理员在赛事结束前关闭了这场比赛。';
+  }
+
+  match = description.match(/^(.+) is the new champion, and (.+) claimed third place\.$/);
+  if (match) {
+    return `${match[1]} 获得冠军，${match[2]} 获得季军。`;
+  }
+
+  if (description === 'Bracket seeding is locked and matches are live.') {
+    return '对阵已锁定，比赛正式开始。';
+  }
+
+  return localizeBracketLabel(language, description);
+};
+
+const formatRelativeTime = (language: 'en' | 'zh', value: string) =>
+  formatDistanceToNow(new Date(value), {
+    addSuffix: true,
+    locale: language === 'zh' ? zhCN : enUS,
+  });
 
 export default function Dashboard() {
   const { userProfile, theme, language } = useAuth();
@@ -98,7 +193,10 @@ export default function Dashboard() {
       : 0;
 
   const feedTitle = language === 'zh' ? '赛事动态' : 'Tournament Feed';
-  const feedEmpty = language === 'zh' ? '开赛、晋级和夺冠动态会显示在这里。' : 'Bracket starts, advances, and title wins will show up here.';
+  const feedEmpty =
+    language === 'zh'
+      ? '开赛、晋级和夺冠动态会显示在这里。'
+      : 'Bracket starts, advances, and title wins will show up here.';
   const liveFeed = feedEvents.slice(0, 6);
 
   return (
@@ -250,7 +348,6 @@ export default function Dashboard() {
 
       <ActivityHeatmap matches={activityMatches} theme={theme} language={language} />
 
-
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
@@ -275,14 +372,14 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className={clsx('font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                      {event.title}
+                      {localizeTimelineTitle(language, event.title)}
                     </div>
                     <div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
-                      {event.description}
+                      {localizeTimelineDescription(language, event.description)}
                     </div>
                   </div>
                   <div className="text-xs font-medium text-zinc-500 shrink-0">
-                    {formatDistanceToNow(new Date(event.createdAt), { addSuffix: true })}
+                    {formatRelativeTime(language, event.createdAt)}
                   </div>
                 </div>
               </div>
@@ -290,6 +387,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
@@ -337,7 +435,7 @@ export default function Dashboard() {
                           {opponentName}
                         </div>
                         <div className="text-xs text-zinc-500 font-medium">
-                          {match.type === 'casual' ? t('play.casual') : t('play.ranked')} - {formatDistanceToNow(new Date(match.createdAt), { addSuffix: true })}
+                          {match.type === 'casual' ? t('play.casual') : t('play.ranked')} - {formatRelativeTime(language, match.createdAt)}
                         </div>
                       </div>
                     </div>
@@ -368,5 +466,3 @@ export default function Dashboard() {
     </motion.div>
   );
 }
-
-

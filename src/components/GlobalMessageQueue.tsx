@@ -132,27 +132,27 @@ const copy = {
 const bubbleTheme = {
   dark: {
     shell:
-      'border-white/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] text-white shadow-[0_30px_80px_rgba(2,6,23,0.42)]',
+      'border-white/16 bg-[linear-gradient(135deg,rgba(56,78,112,0.4),rgba(19,27,43,0.22)_52%,rgba(10,14,23,0.28))] text-white shadow-[0_28px_70px_rgba(2,6,23,0.38),inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.05)]',
     panel:
-      'border-white/18 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.07))] text-white shadow-[0_32px_100px_rgba(2,6,23,0.46)]',
-    card: 'border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(255,255,255,0.04))]',
-    button: 'border-white/14 bg-white/8 hover:bg-white/14',
+      'border-white/16 bg-[linear-gradient(135deg,rgba(64,86,122,0.44),rgba(21,31,51,0.24)_52%,rgba(10,14,23,0.34))] text-white shadow-[0_32px_96px_rgba(2,6,23,0.42),inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.05)]',
+    card: 'border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.035))] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
+    button: 'border-white/14 bg-white/10 hover:bg-white/16',
     muted: 'text-zinc-300',
     input: 'border-white/14 bg-white/10 text-white',
-    shine: 'bg-[linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0.12),rgba(255,255,255,0.28))]',
-    glow: 'bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.22),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.18),transparent_40%)]',
+    shine: 'bg-[linear-gradient(90deg,rgba(255,255,255,0.34),rgba(255,255,255,0.08),rgba(255,255,255,0.26))]',
+    glow: 'bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.16),transparent_36%),radial-gradient(circle_at_center,rgba(167,139,250,0.1),transparent_45%)]',
   },
   light: {
     shell:
-      'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.52),rgba(240,244,255,0.26))] text-zinc-900 shadow-[0_24px_60px_rgba(15,23,42,0.16)]',
+      'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.36),rgba(232,239,255,0.22)_52%,rgba(220,246,238,0.2))] text-zinc-900 shadow-[0_24px_60px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.88),inset_0_-1px_0_rgba(148,163,184,0.16)]',
     panel:
-      'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.56),rgba(236,242,255,0.28))] text-zinc-900 shadow-[0_28px_80px_rgba(15,23,42,0.18)]',
-    card: 'border-white/50 bg-[linear-gradient(135deg,rgba(255,255,255,0.42),rgba(241,245,255,0.24))]',
-    button: 'border-white/55 bg-white/38 hover:bg-white/52',
+      'border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.42),rgba(232,239,255,0.24)_52%,rgba(220,246,238,0.22))] text-zinc-900 shadow-[0_28px_80px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.92),inset_0_-1px_0_rgba(148,163,184,0.16)]',
+    card: 'border-white/55 bg-[linear-gradient(135deg,rgba(255,255,255,0.34),rgba(241,245,255,0.2))] shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]',
+    button: 'border-white/60 bg-white/30 hover:bg-white/42',
     muted: 'text-zinc-500',
     input: 'border-white/55 bg-white/44 text-zinc-900',
-    shine: 'bg-[linear-gradient(90deg,rgba(255,255,255,0.95),rgba(255,255,255,0.5),rgba(255,255,255,0.88))]',
-    glow: 'bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.18),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(192,132,252,0.16),transparent_38%)]',
+    shine: 'bg-[linear-gradient(90deg,rgba(255,255,255,0.96),rgba(255,255,255,0.44),rgba(255,255,255,0.84))]',
+    glow: 'bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.16),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.12),transparent_34%),radial-gradient(circle_at_center,rgba(192,132,252,0.09),transparent_42%)]',
   },
 } as const;
 
@@ -314,6 +314,7 @@ export default function GlobalMessageQueue() {
   const { userProfile, theme, language } = useAuth();
   const ui = copy[language];
   const tones = bubbleTheme[theme];
+  const badgeRing = theme === 'dark' ? 'ring-zinc-950/88' : 'ring-white/95';
   const [open, setOpen] = useState(false);
   const [casualMatches, setCasualMatches] = useState<Match[]>([]);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -605,18 +606,17 @@ export default function GlobalMessageQueue() {
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={clsx(
-          'fixed right-4 z-[130] flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
+          'fixed right-4 z-[130] flex h-[4.35rem] w-[4.35rem] items-center justify-center rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
           'bottom-[calc(env(safe-area-inset-bottom)+7.25rem)]',
           tones.shell,
         )}
       >
-        <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full blur-2xl', tones.shine)} />
+        <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full opacity-90 blur-2xl', tones.shine)} />
         <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
-        <span className="pointer-events-none absolute inset-[1px] rounded-[1.7rem] border border-white/12" />
         <MessageSquareMore className="relative z-10 h-6 w-6" />
         {queueItems.length > 0 ? (
-          <span className="absolute -right-1 -top-1 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-500 px-1 text-[11px] font-black text-zinc-950">
-            {queueItems.length}
+          <span className={clsx('absolute -right-1.5 -top-1.5 z-10 flex h-6 min-w-[1.65rem] items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[11px] font-black text-zinc-950 ring-[3px] shadow-[0_10px_24px_rgba(16,185,129,0.28)]', badgeRing)}>
+            {queueItems.length > 99 ? '99+' : queueItems.length}
           </span>
         ) : null}
       </button>
@@ -633,9 +633,8 @@ export default function GlobalMessageQueue() {
               tones.panel,
             )}
           >
-            <span className={clsx('pointer-events-none absolute inset-x-10 top-2 h-12 rounded-full blur-3xl', tones.shine)} />
+            <span className={clsx('pointer-events-none absolute inset-x-10 top-2 h-12 rounded-full opacity-90 blur-3xl', tones.shine)} />
             <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
-            <span className="pointer-events-none absolute inset-[1px] rounded-[1.95rem] border border-white/12" />
             <div className={clsx('border-b px-5 py-4', theme === 'dark' ? 'border-white/10' : 'border-white/60')}>
               <div className="flex items-center justify-between gap-3">
                 <div>

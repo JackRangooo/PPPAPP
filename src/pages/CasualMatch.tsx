@@ -1,21 +1,18 @@
 ﻿import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Clock, Search, Star, Swords } from 'lucide-react';
+import { Search, Star, Swords } from 'lucide-react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
-import { createCasualMatch, listProfiles, listUserActiveCasualMatches } from '../lib/api';
+import { createCasualMatch, listProfiles } from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
-import type { Match, UserProfile } from '../types';
+import type { UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
 export default function CasualMatch() {
   const { userProfile, theme, language } = useAuth();
   const t = useTranslation(language);
-  const navigate = useNavigate();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [search, setSearch] = useState('');
-  const [pendingMatches, setPendingMatches] = useState<Match[]>([]);
 
   useEffect(() => {
     if (!userProfile) return;
@@ -28,27 +25,14 @@ export default function CasualMatch() {
       }
     };
 
-    const loadMatches = async () => {
-      try {
-        setPendingMatches(await listUserActiveCasualMatches(userProfile.uid));
-      } catch (error) {
-        console.error('Failed to load matches', error);
-      }
-    };
-
     void loadUsers();
-    void loadMatches();
 
     const stopUsers = subscribeToTable('profiles', () => {
       void loadUsers();
     });
-    const stopMatches = subscribeToTable('matches', () => {
-      void loadMatches();
-    });
 
     return () => {
       stopUsers();
-      stopMatches();
     };
   }, [userProfile]);
 
@@ -68,48 +52,6 @@ export default function CasualMatch() {
 
   return (
     <div className="space-y-8">
-      {pendingMatches.length > 0 ? (
-        <section>
-          <h2 className={clsx('text-lg font-bold mb-4 flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            <Clock className="w-5 h-5 text-amber-500" /> {t('play.activeChallenges')}
-          </h2>
-          <div className="space-y-3">
-            {pendingMatches.map((match) => {
-              const isChallenger = match.player1Id === userProfile?.uid;
-              const opponentName = isChallenger ? match.player2Name : match.player1Name;
-
-              return (
-                <div
-                  key={match.id}
-                  className={clsx(
-                    'border rounded-2xl p-4 flex items-center justify-between transition-colors gap-4',
-                    theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm',
-                  )}
-                >
-                  <div>
-                    <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                      {isChallenger ? t('play.waitingFor', { name: opponentName }) : t('play.challengedYou', { name: opponentName })}
-                    </div>
-                    <div className="text-xs text-zinc-500 font-medium uppercase tracking-wider mt-1">
-                      {t(`match.status.${match.status}`)}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/match/${match.id}`)}
-                    className={clsx(
-                      'px-4 py-2 rounded-xl text-sm font-bold transition-colors shrink-0',
-                      theme === 'dark' ? 'bg-zinc-800 hover:bg-zinc-700 text-white' : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900',
-                    )}
-                  >
-                    {t('play.view')}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
       <section>
         <h2 className={clsx('text-lg font-bold mb-4 flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
           <Search className="w-5 h-5 text-emerald-500" /> {t('play.findOpponents')}

@@ -51,6 +51,11 @@ const applyThemeToDocument = (theme: Theme) => {
   }
 };
 
+const applyLanguageToDocument = (language: Language) => {
+  document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+  document.documentElement.dataset.language = language;
+};
+
 const applyProfileState = (
   profile: UserProfile | null,
   setUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>,
@@ -62,6 +67,7 @@ const applyProfileState = (
     setTheme('dark');
     setLanguageState('en');
     applyThemeToDocument('dark');
+    applyLanguageToDocument('en');
     return;
   }
 
@@ -69,6 +75,7 @@ const applyProfileState = (
   setTheme(profile.theme);
   setLanguageState(profile.language);
   applyThemeToDocument(profile.theme);
+  applyLanguageToDocument(profile.language);
 };
 
 export const useAuth = () => {

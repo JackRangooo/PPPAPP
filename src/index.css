@@ -8,6 +8,15 @@ body {
   @apply bg-zinc-950 text-zinc-100;
 }
 
+html,
+body {
+  touch-action: pan-x pan-y;
+}
+
 html.light body {
   @apply bg-zinc-50 text-zinc-900;
+}
+
+html[data-language="en"] body {
+  font-family: "Times New Roman", Times, Georgia, serif;
 }

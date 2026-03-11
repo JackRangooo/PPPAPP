@@ -33,7 +33,7 @@ const copy = {
   },
   zh: {
     title: '编辑资料',
-    subtitle: '头像、显示名和登录账号会一起更新。',
+    subtitle: '头像、显示名称和登录账号会一起更新。',
     displayName: '显示名称',
     nickname: '登录账号',
     upload: '上传头像',
@@ -133,18 +133,18 @@ export default function ProfileIdentityEditor({
   return (
     <AnimatePresence>
       {open ? (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center p-4 sm:items-center">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-3 sm:p-4">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/75 backdrop-blur-md" />
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             className={clsx(
-              'relative z-10 w-full max-w-xl rounded-[2rem] border p-6 sm:p-8',
+              'relative z-10 flex max-h-[calc(100vh-1.5rem)] w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border',
               theme === 'dark' ? 'bg-zinc-950 border-white/10' : 'bg-white border-zinc-200 shadow-2xl',
             )}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 px-5 pb-4 pt-5 sm:px-7 sm:pt-7">
               <div>
                 <h2 className={clsx('text-2xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                   {ui.title}
@@ -153,129 +153,131 @@ export default function ProfileIdentityEditor({
                   {ui.subtitle}
                 </p>
               </div>
-              <button onClick={onClose} className="text-zinc-500 hover:text-emerald-500">
-                <X className="w-6 h-6" />
+              <button onClick={onClose} className="rounded-xl p-2 text-zinc-500 transition-colors hover:text-emerald-500">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-8 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
-              <div className="space-y-4">
-                <div className="relative mx-auto w-fit">
-                  <img
-                    src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(previewName)}&background=random`}
-                    alt={previewName}
-                    className={clsx(
-                      'h-32 w-32 rounded-full object-cover shadow-xl',
-                      theme === 'dark' ? 'border-4 border-zinc-900' : 'border-4 border-white',
-                    )}
-                    referrerPolicy="no-referrer"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={busy || uploading}
-                    className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-zinc-950 shadow-lg transition-colors hover:bg-emerald-400 disabled:opacity-60"
-                  >
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                  </button>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePickAvatar} />
-                </div>
-
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={busy || uploading}
-                    className={clsx(
-                      'w-full rounded-2xl px-4 py-3 text-sm font-black transition-colors',
-                      theme === 'dark'
-                        ? 'bg-emerald-500/12 text-emerald-400 hover:bg-emerald-500/18'
-                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
-                    )}
-                  >
-                    {ui.upload}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAvatarUrl('')}
-                    disabled={busy || uploading}
-                    className={clsx(
-                      'w-full rounded-2xl px-4 py-3 text-sm font-bold transition-colors',
-                      theme === 'dark'
-                        ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
-                        : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
-                    )}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <RefreshCcw className="h-4 w-4" />
-                      {ui.resetAvatar}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-5">
-                <label className="block">
-                  <span className={clsx('mb-2 block text-xs font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                    {ui.displayName}
-                  </span>
-                  <div className={clsx('flex items-center gap-3 rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/10 bg-zinc-900' : 'border-zinc-200 bg-zinc-50')}>
-                    <UserRound className="h-4 w-4 text-zinc-500" />
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(event) => setDisplayName(event.target.value)}
-                      maxLength={40}
-                      className={clsx('w-full bg-transparent text-base font-bold outline-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}
+            <div className="flex-1 overflow-y-auto px-5 pb-5 sm:px-7">
+              <div className="grid gap-7 lg:grid-cols-[220px_minmax(0,1fr)]">
+                <div className="space-y-4">
+                  <div className="relative mx-auto w-fit">
+                    <img
+                      src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(previewName)}&background=random`}
+                      alt={previewName}
+                      className={clsx(
+                        'h-32 w-32 rounded-full object-cover object-center shadow-xl',
+                        theme === 'dark' ? 'border-4 border-zinc-900' : 'border-4 border-white',
+                      )}
+                      referrerPolicy="no-referrer"
                     />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={busy || uploading}
+                      className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-zinc-950 shadow-lg transition-colors hover:bg-emerald-400 disabled:opacity-60"
+                    >
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePickAvatar} />
                   </div>
-                </label>
 
-                <label className="block">
-                  <span className={clsx('mb-2 block text-xs font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                    {ui.nickname}
-                  </span>
-                  <div className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/10 bg-zinc-900' : 'border-zinc-200 bg-zinc-50')}>
-                    <input
-                      type="text"
-                      value={nickname}
-                      onChange={(event) => setNickname(event.target.value)}
-                      maxLength={24}
-                      className={clsx('w-full bg-transparent text-base font-bold outline-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}
-                    />
-                    <div className={clsx('mt-2 text-xs leading-5', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                      {ui.nicknameHint}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={busy || uploading}
+                      className={clsx(
+                        'w-full rounded-2xl px-4 py-2.5 text-sm font-black transition-colors',
+                        theme === 'dark'
+                          ? 'bg-emerald-500/12 text-emerald-400 hover:bg-emerald-500/18'
+                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+                      )}
+                    >
+                      {ui.upload}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrl('')}
+                      disabled={busy || uploading}
+                      className={clsx(
+                        'w-full rounded-2xl px-4 py-2.5 text-sm font-bold transition-colors',
+                        theme === 'dark'
+                          ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+                          : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+                      )}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <RefreshCcw className="h-4 w-4" />
+                        {ui.resetAvatar}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  <label className="block">
+                    <span className={clsx('mb-2 block text-xs font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                      {ui.displayName}
+                    </span>
+                    <div className={clsx('flex items-center gap-3 rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/10 bg-zinc-900' : 'border-zinc-200 bg-zinc-50')}>
+                      <UserRound className="h-4 w-4 text-zinc-500" />
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(event) => setDisplayName(event.target.value)}
+                        maxLength={40}
+                        className={clsx('w-full bg-transparent text-base font-bold outline-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}
+                      />
                     </div>
-                  </div>
-                </label>
+                  </label>
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={busy}
-                    className={clsx(
-                      'rounded-2xl px-5 py-3 font-bold transition-colors',
-                      theme === 'dark'
-                        ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
-                        : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
-                    )}
-                  >
-                    {ui.cancel}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onSave({ displayName, nickname, avatarUrl })}
-                    disabled={busy || uploading}
-                    className="rounded-2xl bg-emerald-500 px-5 py-3 font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                      {ui.save}
+                  <label className="block">
+                    <span className={clsx('mb-2 block text-xs font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                      {ui.nickname}
                     </span>
-                  </button>
+                    <div className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/10 bg-zinc-900' : 'border-zinc-200 bg-zinc-50')}>
+                      <input
+                        type="text"
+                        value={nickname}
+                        onChange={(event) => setNickname(event.target.value)}
+                        maxLength={24}
+                        className={clsx('w-full bg-transparent text-base font-bold outline-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}
+                      />
+                      <div className={clsx('mt-2 text-xs leading-5', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                        {ui.nicknameHint}
+                      </div>
+                    </div>
+                  </label>
                 </div>
               </div>
+            </div>
+
+            <div className={clsx('flex items-center justify-end gap-3 border-t px-5 py-4 sm:px-7', theme === 'dark' ? 'border-white/8' : 'border-zinc-200')}>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={busy}
+                className={clsx(
+                  'rounded-2xl px-4 py-2.5 text-sm font-bold transition-colors',
+                  theme === 'dark'
+                    ? 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'
+                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+                )}
+              >
+                {ui.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={() => void onSave({ displayName, nickname, avatarUrl })}
+                disabled={busy || uploading}
+                className="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60"
+              >
+                <span className="inline-flex items-center gap-2">
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {ui.save}
+                </span>
+              </button>
             </div>
           </motion.div>
         </div>
