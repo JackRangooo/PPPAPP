@@ -602,24 +602,30 @@ export default function GlobalMessageQueue() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
+      <div
         className={clsx(
-          'fixed right-4 z-[130] flex h-[4.35rem] w-[4.35rem] items-center justify-center rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5 md:bottom-8 md:right-8',
+          'fixed right-4 z-[130] md:bottom-8 md:right-8',
           'bottom-[calc(env(safe-area-inset-bottom)+7.25rem)]',
-          tones.shell,
         )}
       >
-        <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full opacity-90 blur-2xl', tones.shine)} />
-        <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
-        <MessageSquareMore className="relative z-10 h-6 w-6" />
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className={clsx(
+            'relative flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5',
+            tones.shell,
+          )}
+        >
+          <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full opacity-90 blur-2xl', tones.shine)} />
+          <span className={clsx('pointer-events-none absolute inset-0 rounded-[1.8rem]', tones.glow)} />
+          <MessageSquareMore className="relative z-10 h-6 w-6" />
+        </button>
         {queueItems.length > 0 ? (
           <span className={clsx('absolute -right-1.5 -top-1.5 z-10 flex h-6 min-w-[1.65rem] items-center justify-center rounded-full bg-emerald-500 px-1.5 text-[11px] font-black text-zinc-950 ring-[3px] shadow-[0_10px_24px_rgba(16,185,129,0.28)]', badgeRing)}>
             {queueItems.length > 99 ? '99+' : queueItems.length}
           </span>
         ) : null}
-      </button>
+      </div>
 
       <AnimatePresence>
         {open ? (
@@ -628,13 +634,13 @@ export default function GlobalMessageQueue() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             className={clsx(
-              'fixed right-4 z-[129] w-[min(92vw,420px)] overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-8',
+              'fixed right-4 z-[129] flex h-[min(34rem,calc(100vh-10.5rem))] w-[min(92vw,420px)] flex-col overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-8',
               'bottom-[calc(env(safe-area-inset-bottom)+12.2rem)]',
               tones.panel,
             )}
           >
             <span className={clsx('pointer-events-none absolute inset-x-10 top-2 h-12 rounded-full opacity-90 blur-3xl', tones.shine)} />
-            <span className={clsx('pointer-events-none absolute inset-0', tones.glow)} />
+            <span className={clsx('pointer-events-none absolute inset-0 rounded-[2rem]', tones.glow)} />
             <div className={clsx('border-b px-5 py-4', theme === 'dark' ? 'border-white/10' : 'border-white/60')}>
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -654,7 +660,7 @@ export default function GlobalMessageQueue() {
               </div>
             </div>
 
-            <div className="max-h-[68vh] space-y-3 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               {queueItems.length > 0 ? (
                 queueItems.map((item) => {
                   const busy = busyKey === item.key;
