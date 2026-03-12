@@ -5,10 +5,9 @@ import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import TournamentBracketDialog from '../components/TournamentBracketDialog';
-import TournamentPodium from '../components/TournamentPodium';
 import { cancelTournament, createTournament, createTournamentMatchComment, endTournament, getReadableErrorMessage, listProfiles, listTournamentMatchComments, listTournaments, registerForTournament, startTournament } from '../lib/api';
 import { createTournamentBracket, sortTournamentTimeline } from '../lib/tournamentBracket';
-import { buildTournamentPreviewCard, getTournamentPodiumData, upsertTournament } from '../lib/tournamentPresentation';
+import { buildTournamentPreviewCard, upsertTournament } from '../lib/tournamentPresentation';
 import { subscribeToTable } from '../lib/supabase';
 import type { Tournament, TournamentMatchComment, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -269,7 +268,6 @@ export default function TournamentsScreen() {
 
   if (loading) return <div className="py-12 text-center font-medium text-zinc-500">{t('play.loadingTournaments')}</div>;
 
-  const podium = featuredTournament ? getTournamentPodiumData(featuredTournament, profilesById) : { podiumEntries: [], standings: [] };
   const laneOptions = [
     { id: 'registration' as const, label: ui.registrationTab, hint: ui.registrationHint, count: registrationTournaments.length },
     { id: 'ongoing' as const, label: ui.ongoingTab, hint: ui.ongoingHint, count: ongoingTournaments.length },
@@ -309,11 +307,13 @@ export default function TournamentsScreen() {
               <div className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{tournament.participants.length} {ui.participants}</div>
             </div>
           </div>
-          <div className={clsx('rounded-[1.6rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/65 text-zinc-300' : 'border-zinc-200 bg-white/75 text-zinc-700')}>
-            <div>{ui.minPlayersHint}</div>
-            <div className="mt-1">{ui.registrationClosed}</div>
-            <div className="mt-1">{ui.bracketHint}</div>
-          </div>
+          {canManageTournament ? (
+            <div className={clsx('rounded-[1.6rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/65 text-zinc-300' : 'border-zinc-200 bg-white/75 text-zinc-700')}>
+              <div>{ui.minPlayersHint}</div>
+              <div className="mt-1">{ui.registrationClosed}</div>
+              <div className="mt-1">{ui.bracketHint}</div>
+            </div>
+          ) : null}
           <div className="flex flex-wrap gap-3">
             {tournament.status === 'registration' ? (
               <button onClick={() => void handleRegister(tournament.id)} disabled={busy || tournament.participants.includes(userProfile?.uid || '')} className="rounded-2xl bg-amber-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{tournament.participants.includes(userProfile?.uid || '') ? t('play.registered') : t('play.joinTournament')}</button>
@@ -335,8 +335,12 @@ export default function TournamentsScreen() {
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500"><Sparkles className="h-4 w-4" />{ui.hub}</div>
           <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.hub}</h2>
-          <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>{ui.hubSubtitle}</p>
-          <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>{ui.rootOnly}</p>
+          {canManageTournament ? (
+            <>
+              <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>{ui.hubSubtitle}</p>
+              <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>{ui.rootOnly}</p>
+            </>
+          ) : null}
         </div>
         {canManageTournament ? <button onClick={() => void handleCreateTournament()} disabled={busy || hasActiveAdminTournament} title={hasActiveAdminTournament ? ui.createTournamentBlocked : ui.createTournament} className="rounded-2xl bg-amber-500 px-5 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{ui.createTournament}</button> : null}
       </section>

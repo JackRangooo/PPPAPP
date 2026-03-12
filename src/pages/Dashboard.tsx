@@ -2,13 +2,20 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, zhCN } from 'date-fns/locale';
-import { Activity, ArrowRight, Radio, Search, Star, Swords, Trophy, User, X } from 'lucide-react';
+import { Activity, ArrowRight, Loader2, Radio, Search, Star, Swords, Trash2, Trophy, User, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import ActivityHeatmap from '../components/ActivityHeatmap';
-import { listTournaments, listUserRecentMatches, searchProfiles } from '../lib/api';
+import {
+  adminDeleteMatch,
+  adminDeleteTournamentTimelineEvent,
+  getReadableErrorMessage,
+  listTournaments,
+  listUserRecentMatches,
+  searchProfiles,
+} from '../lib/api';
 import { subscribeToTable } from '../lib/supabase';
 import type { Match, TournamentTimelineEvent, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -36,27 +43,27 @@ const localizeTimelineTitle = (language: 'en' | 'zh', title: string) => {
 
   let match = title.match(/^(.+) is ready$/);
   if (match) {
-    return `${localizeBracketLabel(language, match[1])}已就绪`;
+    return `${localizeBracketLabel(language, match[1])} 已就绪`;
   }
 
   match = title.match(/^(.+) is live$/);
   if (match) {
-    return `${localizeBracketLabel(language, match[1])}已开赛`;
+    return `${localizeBracketLabel(language, match[1])} 开始进行`;
   }
 
   match = title.match(/^(.+) advanced by walkover$/);
   if (match) {
-    return `${localizeBracketLabel(language, match[1])}轮空晋级`;
+    return `${localizeBracketLabel(language, match[1])} 轮空晋级`;
   }
 
   match = title.match(/^(.+) won (.+)$/);
   if (match) {
-    return `${match[1]}赢下${localizeBracketLabel(language, match[2])}`;
+    return `${match[1]} 赢下 ${localizeBracketLabel(language, match[2])}`;
   }
 
   match = title.match(/^(.+) was cancelled$/);
   if (match) {
-    return `${match[1]}已取消`;
+    return `${match[1]} 已取消`;
   }
 
   return localizeBracketLabel(language, title);
@@ -74,26 +81,26 @@ const localizeTimelineDescription = (language: 'en' | 'zh', description: string)
 
   match = description.match(/^(.+) and (.+) are ready to play\.$/);
   if (match) {
-    return `${match[1]} 和 ${match[2]} 都已就绪，比赛可以开始。`;
+    return `${match[1]} 和 ${match[2]} 都已就绪，可以开始比赛。`;
   }
 
   match = description.match(/^(.+) moved on from (.+) without playing\.$/);
   if (match) {
-    return `${match[1]} 无需比赛，直接从 ${match[2]} 处晋级。`;
+    return `${match[1]} 无需比赛，直接从 ${localizeBracketLabel(language, match[2])} 晋级。`;
   }
 
   match = description.match(/^(.+) beat (.+) in (.+)\.$/);
   if (match) {
-    return `${match[1]} 在${localizeBracketLabel(language, match[3])}中击败了 ${match[2]}。`;
+    return `${match[1]} 在 ${localizeBracketLabel(language, match[3])} 中击败了 ${match[2]}。`;
   }
 
   if (description === 'The root admin closed this event before it finished.') {
-    return 'root 管理员在赛事结束前关闭了这场比赛。';
+    return 'root 管理员在赛事结束前关闭了这场赛事。';
   }
 
   match = description.match(/^(.+) is the new champion, and (.+) claimed third place\.$/);
   if (match) {
-    return `${match[1]} 获得冠军，${match[2]} 获得季军。`;
+    return `${match[1]} 夺得冠军，${match[2]} 获得季军。`;
   }
 
   if (description === 'Bracket seeding is locked and matches are live.') {
@@ -118,13 +125,23 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [deletingFeedId, setDeletingFeedId] = useState<string | null>(null);
+  const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userProfile) return;
+    if (!userProfile) {
+      setActivityMatches([]);
+      return;
+    }
+
+    let active = true;
 
     const loadMatches = async () => {
       try {
-        setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT));
+        const matches = await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT);
+        if (active) {
+          setActivityMatches(matches);
+        }
       } catch (error) {
         console.error('Failed to load match activity', error);
       }
@@ -137,7 +154,40 @@ export default function Dashboard() {
   }, [userProfile]);
 
   useEffect(() => {
-    if (!userProfile) return;
+    if (!userProfile) {
+      setFeedEvents([]);
+      return;
+    }
+
+    let active = true;
+
+    const loadFeed = async () => {
+      try {
+        const tournaments = await listTournaments();
+        const nextEvents = tournaments
+          .flatMap((tournament) => tournament.timeline)
+          .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+          .slice(0, 8);
+        if (active) {
+          setFeedEvents(nextEvents);
+        }
+      } catch (error) {
+        console.error('Failed to load tournament feed', error);
+      }
+    };
+
+    void loadFeed();
+    return subscribeToTable('tournaments', () => {
+      void loadFeed();
+    });
+  }, [userProfile]);
+
+  useEffect(() => {
+    if (!userProfile) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
 
     const timeoutId = window.setTimeout(async () => {
       if (searchQuery.trim().length < 2) {
@@ -160,29 +210,29 @@ export default function Dashboard() {
     return () => window.clearTimeout(timeoutId);
   }, [searchQuery, userProfile]);
 
-  useEffect(() => {
-    if (!userProfile) return;
+  if (!userProfile) {
+    return null;
+  }
 
-    const loadFeed = async () => {
-      try {
-        const tournaments = await listTournaments();
-        const nextEvents = tournaments
-          .flatMap((tournament) => tournament.timeline)
-          .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-          .slice(0, 8);
-        setFeedEvents(nextEvents);
-      } catch (error) {
-        console.error('Failed to load tournament feed', error);
-      }
-    };
-
-    void loadFeed();
-    return subscribeToTable('tournaments', () => {
-      void loadFeed();
-    });
-  }, [userProfile]);
-
-  if (!userProfile) return null;
+  const isRoot = Boolean(userProfile.isRoot);
+  const adminCopy =
+    language === 'zh'
+      ? {
+          deleteFeed: '删除动态',
+          deleteFeedConfirm: '确认删除这条赛事动态吗？',
+          deleteFeedFailed: '删除赛事动态失败。',
+          deleteMatch: '删除比赛',
+          deleteMatchConfirm: '确认删除这条最近比赛记录吗？',
+          deleteMatchFailed: '删除最近比赛失败。',
+        }
+      : {
+          deleteFeed: 'Delete Feed',
+          deleteFeedConfirm: 'Delete this tournament feed item?',
+          deleteFeedFailed: 'Failed to delete this feed item.',
+          deleteMatch: 'Delete Match',
+          deleteMatchConfirm: 'Delete this recent match?',
+          deleteMatchFailed: 'Failed to delete this recent match.',
+        };
 
   const recentMatches = activityMatches.slice(0, 8);
   const displayName = (userProfile.displayName || userProfile.nickname || 'Player').trim();
@@ -199,20 +249,73 @@ export default function Dashboard() {
       : 'Bracket starts, advances, and title wins will show up here.';
   const liveFeed = feedEvents.slice(0, 6);
 
+  const refreshMatches = async () => {
+    setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT));
+  };
+
+  const refreshFeed = async () => {
+    const tournaments = await listTournaments();
+    const nextEvents = tournaments
+      .flatMap((tournament) => tournament.timeline)
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      .slice(0, 8);
+    setFeedEvents(nextEvents);
+  };
+
+  const handleDeleteFeedEvent = async (event: TournamentTimelineEvent) => {
+    if (!isRoot || deletingFeedId) {
+      return;
+    }
+
+    if (!window.confirm(adminCopy.deleteFeedConfirm)) {
+      return;
+    }
+
+    setDeletingFeedId(event.id);
+    try {
+      await adminDeleteTournamentTimelineEvent(event.tournamentId, event.id);
+      await refreshFeed();
+    } catch (error) {
+      window.alert(getReadableErrorMessage(error, adminCopy.deleteFeedFailed));
+    } finally {
+      setDeletingFeedId(null);
+    }
+  };
+
+  const handleDeleteRecentMatch = async (matchId: string) => {
+    if (!isRoot || deletingMatchId) {
+      return;
+    }
+
+    if (!window.confirm(adminCopy.deleteMatchConfirm)) {
+      return;
+    }
+
+    setDeletingMatchId(matchId);
+    try {
+      await adminDeleteMatch(matchId);
+      await refreshMatches();
+    } catch (error) {
+      window.alert(getReadableErrorMessage(error, adminCopy.deleteMatchFailed));
+    } finally {
+      setDeletingMatchId(null);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <header className="flex items-center justify-between gap-4">
         <div>
-          <h1 className={clsx('text-3xl font-bold tracking-tight mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+          <h1 className={clsx('mb-1 text-3xl font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {t('dashboard.welcome')}, {firstName}
           </h1>
-          <p className="text-zinc-400 font-medium">{t('dashboard.readyForNextMatch')}</p>
+          <p className="font-medium text-zinc-400">{t('dashboard.readyForNextMatch')}</p>
         </div>
-        <Link to="/profile" className={clsx('w-12 h-12 rounded-full overflow-hidden border-2 shrink-0', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}>
+        <Link to="/profile" className={clsx('h-12 w-12 shrink-0 overflow-hidden rounded-full border-2', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}>
           <img
-            src={userProfile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile.displayName)}&background=random`}
+            src={userProfile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(userProfile.displayName || userProfile.nickname)}&background=random`}
             alt="Avatar"
-            className="w-full h-full object-cover"
+            className="h-full w-full object-cover"
             referrerPolicy="no-referrer"
           />
         </Link>
@@ -220,25 +323,25 @@ export default function Dashboard() {
 
       <div className="relative">
         <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             placeholder={t('dashboard.searchPlayers')}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className={clsx(
-              'w-full border rounded-2xl py-4 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all',
+              'w-full rounded-2xl border py-4 pl-12 pr-12 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50',
               theme === 'dark'
-                ? 'bg-zinc-900/50 border-white/5 text-white placeholder:text-zinc-600'
-                : 'bg-white border-zinc-200 text-zinc-900 placeholder:text-zinc-400 shadow-sm',
+                ? 'border-white/5 bg-zinc-900/50 text-white placeholder:text-zinc-600'
+                : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 shadow-sm',
             )}
           />
           {searchQuery ? (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-emerald-500"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-emerald-500"
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           ) : null}
         </div>
@@ -250,12 +353,12 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className={clsx(
-                'absolute top-full left-0 right-0 mt-2 border rounded-2xl shadow-2xl z-50 overflow-hidden',
-                theme === 'dark' ? 'bg-zinc-900 border-white/10' : 'bg-white border-zinc-200',
+                'absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border shadow-2xl',
+                theme === 'dark' ? 'border-white/10 bg-zinc-900' : 'border-zinc-200 bg-white',
               )}
             >
               {isSearching ? (
-                <div className="p-4 text-center text-zinc-500 text-sm font-medium">{t('dashboard.searching')}</div>
+                <div className="p-4 text-center text-sm font-medium text-zinc-500">{t('dashboard.searching')}</div>
               ) : searchResults.length > 0 ? (
                 <div className={clsx('divide-y', theme === 'dark' ? 'divide-white/5' : 'divide-zinc-100')}>
                   {searchResults.map((result) => (
@@ -266,28 +369,26 @@ export default function Dashboard() {
                         setSearchQuery('');
                       }}
                       className={clsx(
-                        'w-full flex items-center gap-3 p-4 transition-colors text-left',
+                        'flex w-full items-center gap-3 p-4 text-left transition-colors',
                         theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-zinc-50',
                       )}
                     >
                       <img
-                        src={result.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.displayName)}&background=random`}
+                        src={result.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(result.displayName || result.nickname)}&background=random`}
                         alt={result.displayName}
-                        className={clsx('w-10 h-10 rounded-full border', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}
+                        className={clsx('h-10 w-10 rounded-full border object-cover', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}
                         referrerPolicy="no-referrer"
                       />
                       <div>
-                        <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                          {result.displayName}
-                        </div>
+                        <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{result.displayName}</div>
                         <div className="text-xs text-zinc-500">{result.selectedTitle || t('profile.novicePlayer')}</div>
                       </div>
-                      <User className="w-4 h-4 text-zinc-400 ml-auto" />
+                      <User className="ml-auto h-4 w-4 text-zinc-400" />
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="p-4 text-center text-zinc-500 text-sm font-medium">{t('dashboard.noPlayersFound')}</div>
+                <div className="p-4 text-center text-sm font-medium text-zinc-500">{t('dashboard.noPlayersFound')}</div>
               )}
             </motion.div>
           ) : null}
@@ -295,53 +396,49 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className={clsx('border rounded-3xl p-5 flex flex-col justify-between relative overflow-hidden', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Star className="w-16 h-16 text-emerald-500" />
+        <div className={clsx('relative flex flex-col justify-between overflow-hidden rounded-3xl border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
+          <div className="absolute right-0 top-0 p-4 opacity-10">
+            <Star className="h-16 w-16 text-emerald-500" />
           </div>
-          <div className="flex items-center gap-2 text-emerald-500 mb-4">
-            <Star className="w-4 h-4 fill-current" />
+          <div className="mb-4 flex items-center gap-2 text-emerald-500">
+            <Star className="h-4 w-4 fill-current" />
             <span className="text-xs font-bold uppercase tracking-wider">{t('dashboard.casual')}</span>
           </div>
           <div>
-            <div className={clsx('text-4xl font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-              {userProfile.casualStars}
-            </div>
-            <div className="text-sm text-zinc-500 font-medium">{t('profile.stars')}</div>
+            <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{userProfile.casualStars}</div>
+            <div className="text-sm font-medium text-zinc-500">{t('profile.stars')}</div>
           </div>
         </div>
 
-        <div className={clsx('border rounded-3xl p-5 flex flex-col justify-between relative overflow-hidden', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Activity className="w-16 h-16 text-blue-500" />
+        <div className={clsx('relative flex flex-col justify-between overflow-hidden rounded-3xl border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
+          <div className="absolute right-0 top-0 p-4 opacity-10">
+            <Activity className="h-16 w-16 text-blue-500" />
           </div>
-          <div className="flex items-center gap-2 text-blue-500 mb-4">
-            <Activity className="w-4 h-4" />
+          <div className="mb-4 flex items-center gap-2 text-blue-500">
+            <Activity className="h-4 w-4" />
             <span className="text-xs font-bold uppercase tracking-wider">{t('leaderboard.winRate')}</span>
           </div>
           <div>
-            <div className={clsx('text-4xl font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-              {winRate}%
-            </div>
-            <div className="text-sm text-zinc-500 font-medium">{userProfile.casualWins}W - {userProfile.casualLosses}L</div>
+            <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{winRate}%</div>
+            <div className="text-sm font-medium text-zinc-500">{userProfile.casualWins}W - {userProfile.casualLosses}L</div>
           </div>
         </div>
       </div>
 
       <div className="flex gap-4">
-        <Link to="/play" state={{ tab: 'casual' }} className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-2xl p-4 flex items-center justify-center gap-2 font-bold transition-colors shadow-sm">
-          <Swords className="w-5 h-5" />
+        <Link to="/play" state={{ tab: 'casual' }} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-500 p-4 font-bold text-zinc-950 shadow-sm transition-colors hover:bg-emerald-400">
+          <Swords className="h-5 w-5" />
           {t('play.casual')}
         </Link>
         <Link
           to="/play"
           state={{ tab: 'ranked' }}
           className={clsx(
-            'flex-1 rounded-2xl p-4 flex items-center justify-center gap-2 font-bold transition-colors shadow-sm',
-            theme === 'dark' ? 'bg-zinc-800 hover:bg-zinc-700 text-white' : 'bg-zinc-900 hover:bg-zinc-800 text-white',
+            'flex flex-1 items-center justify-center gap-2 rounded-2xl p-4 font-bold shadow-sm transition-colors',
+            theme === 'dark' ? 'bg-zinc-800 text-white hover:bg-zinc-700' : 'bg-zinc-900 text-white hover:bg-zinc-800',
           )}
         >
-          <Trophy className="w-5 h-5" />
+          <Trophy className="h-5 w-5" />
           {t('play.ranked')}
         </Link>
       </div>
@@ -349,58 +446,77 @@ export default function Dashboard() {
       <ActivityHeatmap matches={activityMatches} theme={theme} language={language} />
 
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            <Radio className="w-5 h-5 text-sky-500" /> {feedTitle}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className={clsx('flex items-center gap-2 text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+            <Radio className="h-5 w-5 text-sky-500" /> {feedTitle}
           </h2>
         </div>
 
         {liveFeed.length === 0 ? (
-          <div className={clsx('border rounded-2xl p-8 text-center', theme === 'dark' ? 'bg-zinc-900/30 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-            <p className="text-zinc-500 font-medium">{feedEmpty}</p>
+          <div className={clsx('rounded-2xl border p-8 text-center', theme === 'dark' ? 'border-white/5 bg-zinc-900/30' : 'border-zinc-200 bg-white shadow-sm')}>
+            <p className="font-medium text-zinc-500">{feedEmpty}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {liveFeed.map((event) => (
-              <div
-                key={event.id}
-                className={clsx(
-                  'border rounded-2xl p-4 transition-colors',
-                  theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm',
-                )}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className={clsx('font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                      {localizeTimelineTitle(language, event.title)}
+            {liveFeed.map((event) => {
+              const isDeleting = deletingFeedId === event.id;
+
+              return (
+                <div
+                  key={event.id}
+                  className={clsx(
+                    'rounded-2xl border p-4 transition-colors',
+                    theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm',
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className={clsx('mb-1 font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                        {localizeTimelineTitle(language, event.title)}
+                      </div>
+                      <div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
+                        {localizeTimelineDescription(language, event.description)}
+                      </div>
                     </div>
-                    <div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>
-                      {localizeTimelineDescription(language, event.description)}
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="text-xs font-medium text-zinc-500">{formatRelativeTime(language, event.createdAt)}</div>
+                      {isRoot ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteFeedEvent(event)}
+                          disabled={Boolean(deletingFeedId)}
+                          aria-label={adminCopy.deleteFeed}
+                          className={clsx(
+                            'inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors',
+                            theme === 'dark'
+                              ? 'border-white/10 bg-zinc-950/80 text-zinc-300 hover:border-red-500/30 hover:text-red-400'
+                              : 'border-zinc-200 bg-white text-zinc-500 hover:border-red-200 hover:text-red-500',
+                            deletingFeedId ? 'cursor-not-allowed opacity-60' : '',
+                          )}
+                        >
+                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      ) : null}
                     </div>
-                  </div>
-                  <div className="text-xs font-medium text-zinc-500 shrink-0">
-                    {formatRelativeTime(language, event.createdAt)}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            {t('dashboard.recentMatches')}
-          </h2>
-          <Link to="/profile" className="text-sm text-emerald-500 font-medium flex items-center gap-1 hover:text-emerald-400">
-            {t('dashboard.viewAll')} <ArrowRight className="w-4 h-4" />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{t('dashboard.recentMatches')}</h2>
+          <Link to="/profile" className="flex items-center gap-1 text-sm font-medium text-emerald-500 transition-colors hover:text-emerald-400">
+            {t('dashboard.viewAll')} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
         {recentMatches.length === 0 ? (
-          <div className={clsx('border rounded-2xl p-8 text-center', theme === 'dark' ? 'bg-zinc-900/30 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-            <p className="text-zinc-500 font-medium">{t('dashboard.noMatches')}</p>
+          <div className={clsx('rounded-2xl border p-8 text-center', theme === 'dark' ? 'border-white/5 bg-zinc-900/30' : 'border-zinc-200 bg-white shadow-sm')}>
+            <p className="font-medium text-zinc-500">{t('dashboard.noMatches')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -412,52 +528,68 @@ export default function Dashboard() {
               const opponentScore = isPlayer1 ? match.player2Score : match.player1Score;
               const isWinner = match.winnerId === userProfile.uid;
               const isCompleted = match.status === 'completed';
+              const isDeleting = deletingMatchId === match.id;
 
               return (
-                <Link
-                  key={match.id}
-                  to={`/match/${match.id}`}
-                  className={clsx(
-                    'block border rounded-2xl p-4 transition-colors',
-                    theme === 'dark' ? 'bg-zinc-900/50 border-white/5 hover:bg-zinc-800/50' : 'bg-white border-zinc-200 hover:bg-zinc-50 shadow-sm',
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={opponentPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(opponentName)}&background=random`}
-                        alt={opponentName}
-                        className="w-10 h-10 rounded-full shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="min-w-0">
-                        <div className={clsx('font-bold truncate', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                          {opponentName}
-                        </div>
-                        <div className="text-xs text-zinc-500 font-medium">
-                          {match.type === 'casual' ? t('play.casual') : t('play.ranked')} - {formatRelativeTime(language, match.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-
-                    {isCompleted ? (
-                      <div className="text-right shrink-0">
-                        <div className={`font-bold text-lg ${isWinner ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {myScore} - {opponentScore}
-                        </div>
-                        <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                          {isWinner ? t('dashboard.victory') : t('dashboard.defeat')}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-right shrink-0">
-                        <div className="text-sm font-bold text-amber-500 uppercase tracking-wider">
-                          {t(`match.status.${match.status}`)}
-                        </div>
-                      </div>
+                <div key={match.id} className="relative">
+                  <Link
+                    to={`/match/${match.id}`}
+                    className={clsx(
+                      'block rounded-2xl border p-4 transition-colors',
+                      isRoot ? 'pr-16' : '',
+                      theme === 'dark' ? 'border-white/5 bg-zinc-900/50 hover:bg-zinc-800/50' : 'border-zinc-200 bg-white shadow-sm hover:bg-zinc-50',
                     )}
-                  </div>
-                </Link>
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <img
+                          src={opponentPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(opponentName)}&background=random`}
+                          alt={opponentName}
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="min-w-0">
+                          <div className={clsx('truncate font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{opponentName}</div>
+                          <div className="text-xs font-medium text-zinc-500">
+                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} - {formatRelativeTime(language, match.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isCompleted ? (
+                        <div className="shrink-0 text-right">
+                          <div className={`text-lg font-bold ${isWinner ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {myScore} - {opponentScore}
+                          </div>
+                          <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                            {isWinner ? t('dashboard.victory') : t('dashboard.defeat')}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="shrink-0 text-right">
+                          <div className="text-sm font-bold uppercase tracking-wider text-amber-500">{t(`match.status.${match.status}`)}</div>
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                  {isRoot ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteRecentMatch(match.id)}
+                      disabled={Boolean(deletingMatchId)}
+                      aria-label={adminCopy.deleteMatch}
+                      className={clsx(
+                        'absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors',
+                        theme === 'dark'
+                          ? 'border-white/10 bg-zinc-950/80 text-zinc-300 hover:border-red-500/30 hover:text-red-400'
+                          : 'border-zinc-200 bg-white text-zinc-500 hover:border-red-200 hover:text-red-500',
+                        deletingMatchId ? 'cursor-not-allowed opacity-60' : '',
+                      )}
+                    >
+                      {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                  ) : null}
+                </div>
               );
             })}
           </div>

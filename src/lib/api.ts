@@ -585,3 +585,20 @@ export const adminDeleteUser = async (userId: string) => {
   });
   return mapProfile(data);
 };
+
+export const adminDeleteTournamentTimelineEvent = async (tournamentId: string, eventId: string) => {
+  const data = await callRpc<any>('admin_delete_tournament_timeline_event', {
+    p_session_token: requireSessionToken(),
+    p_tournament_id: tournamentId,
+    p_event_id: eventId,
+  });
+  return mapTournament(data);
+};
+
+export const adminDeleteMatch = async (matchId: string) => {
+  const data = await callRpc<any>('admin_delete_match', {
+    p_session_token: requireSessionToken(),
+    p_match_id: matchId,
+  });
+  return mapMatch(data);
+};

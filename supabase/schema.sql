@@ -2297,6 +2297,70 @@ begin
 end;
 $$;
 
+create or replace function public.recalculate_casual_profile_stats(
+  p_user_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile public.profiles;
+  v_match record;
+  v_stars integer := 0;
+  v_wins integer := 0;
+  v_losses integer := 0;
+begin
+  if p_user_id is null then
+    return;
+  end if;
+
+  select *
+  into v_profile
+  from public.profiles
+  where id = p_user_id;
+
+  if v_profile.id is null then
+    return;
+  end if;
+
+  if coalesce(v_profile.is_root, false) then
+    update public.profiles
+    set
+      casual_wins = 0,
+      casual_losses = 0,
+      casual_stars = 0
+    where id = p_user_id;
+    return;
+  end if;
+
+  for v_match in
+    select winner_id
+    from public.matches
+    where type = 'casual'
+      and status = 'completed'
+      and (player1_id = p_user_id or player2_id = p_user_id)
+    order by created_at asc, id asc
+  loop
+    if v_match.winner_id = p_user_id then
+      v_wins := v_wins + 1;
+      v_stars := v_stars + 1;
+    else
+      v_losses := v_losses + 1;
+      v_stars := greatest(v_stars - 1, 0);
+    end if;
+  end loop;
+
+  update public.profiles
+  set
+    casual_wins = v_wins,
+    casual_losses = v_losses,
+    casual_stars = v_stars
+  where id = p_user_id;
+end;
+$$;
+
 create or replace function public.admin_delete_user(
   p_session_token text,
   p_user_id uuid
@@ -2370,6 +2434,105 @@ begin
   return v_target;
 end;
 $$;
+
+create or replace function public.admin_delete_match(
+  p_session_token text,
+  p_match_id uuid
+)
+returns public.matches
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_match public.matches;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can delete matches.';
+  end if;
+
+  if p_match_id is null then
+    raise exception 'Choose a match to delete.';
+  end if;
+
+  select *
+  into v_match
+  from public.matches
+  where id = p_match_id
+  for update;
+
+  if v_match.id is null then
+    raise exception 'Match not found.';
+  end if;
+
+  delete from public.matches
+  where id = p_match_id
+  returning * into v_match;
+
+  if v_match.type = 'casual' then
+    perform public.recalculate_casual_profile_stats(v_match.player1_id);
+    perform public.recalculate_casual_profile_stats(v_match.player2_id);
+  end if;
+
+  return v_match;
+end;
+$$;
+
+create or replace function public.admin_delete_tournament_timeline_event(
+  p_session_token text,
+  p_tournament_id uuid,
+  p_event_id text
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_next_timeline jsonb;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can delete tournament events.';
+  end if;
+
+  if p_tournament_id is null then
+    raise exception 'Choose a tournament first.';
+  end if;
+
+  if p_event_id is null or btrim(p_event_id) = '' then
+    raise exception 'Choose an event to delete.';
+  end if;
+
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id
+  for update;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  select coalesce(jsonb_agg(event.value order by event.ord), '[]'::jsonb)
+  into v_next_timeline
+  from jsonb_array_elements(coalesce(v_tournament.timeline, '[]'::jsonb)) with ordinality as event(value, ord)
+  where coalesce(event.value ->> 'id', '') <> p_event_id;
+
+  update public.tournaments
+  set timeline = v_next_timeline
+  where id = p_tournament_id
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
 grant execute on function public.register_with_password(text, text) to anon, authenticated;
 grant execute on function public.login_with_password(text, text) to anon, authenticated;
 grant execute on function public.restore_password_session(text) to anon, authenticated;
@@ -2400,6 +2563,8 @@ grant execute on function public.list_tournament_match_comments(text, uuid, uuid
 grant execute on function public.create_tournament_match_comment(text, uuid, uuid, text) to anon, authenticated;
 grant execute on function public.admin_reset_user_progress(text, uuid) to anon, authenticated;
 grant execute on function public.admin_delete_user(text, uuid) to anon, authenticated;
+grant execute on function public.admin_delete_match(text, uuid) to anon, authenticated;
+grant execute on function public.admin_delete_tournament_timeline_event(text, uuid, text) to anon, authenticated;
 
 select public.ensure_system_tournament();
 
