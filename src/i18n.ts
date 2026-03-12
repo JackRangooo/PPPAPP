@@ -149,9 +149,11 @@ export const translations = {
       theirScore: 'Their Score',
       submitting: 'Submitting...',
       submitVerify: 'Submit & Verify',
+      submitUpdate: 'Update Score',
       matchCompleted: 'Match Completed',
       victory: 'Victory! You earned a star.',
       defeat: 'Defeat. Losses only remove stars once you are above 10.',
+      scoreEditable: 'You already submitted. You can still change the score before your opponent confirms.',
       wasStatus: 'This match was {status}.',
       status: {
         pending: 'Pending',
@@ -317,9 +319,11 @@ export const translations = {
       theirScore: '对手比分',
       submitting: '提交中...',
       submitVerify: '提交并核验',
+      submitUpdate: '重新提交比分',
       matchCompleted: '比赛已完成',
       victory: '胜利！你获得了一颗星。',
       defeat: '失利。只有超过 10 星后才会掉星。',
+      scoreEditable: '你已经提交过比分，但在对手确认前仍然可以修改并重新提交。',
       wasStatus: '这场比赛状态为：{status}。',
       status: {
         pending: '待确认',

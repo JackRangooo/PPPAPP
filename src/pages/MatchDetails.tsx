@@ -46,6 +46,23 @@ export default function MatchDetails() {
     });
   }, [id, navigate, userProfile]);
 
+  useEffect(() => {
+    if (!match || !userProfile) {
+      return;
+    }
+
+    const isPlayer1 = match.player1Id === userProfile.uid;
+
+    if (match.player1Score !== null && match.player2Score !== null) {
+      setMyScore(isPlayer1 ? match.player1Score : match.player2Score);
+      setOpponentScore(isPlayer1 ? match.player2Score : match.player1Score);
+      return;
+    }
+
+    setMyScore('');
+    setOpponentScore('');
+  }, [match, userProfile]);
+
   if (loading || !match || !userProfile) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -206,62 +223,55 @@ export default function MatchDetails() {
             <Trophy className="w-6 h-6 text-emerald-500" /> {t('match.recordScore')}
           </h2>
 
-          {myConfirmed ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-emerald-500" />
+          <div className="space-y-6">
+            {myConfirmed && !opponentConfirmed ? (
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex items-start gap-3 text-emerald-500">
+                <Check className="w-5 h-5 shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{t('match.scoreEditable')}</p>
               </div>
-              <p className={clsx('font-medium text-lg mb-2', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
-                {t('match.scoreSubmitted')}
-              </p>
-              <p className={clsx(theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                {t('match.waitingForConfirm', { name: opponentName })}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {opponentConfirmed ? (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 text-amber-600">
-                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                  <p className="text-sm font-medium">{t('match.opponentSubmitted', { name: opponentName })}</p>
-                </div>
-              ) : null}
+            ) : null}
 
-              <div className="flex items-center justify-center gap-8">
-                <div className="text-center">
-                  <label className="block text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">{t('match.yourScore')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="99"
-                    value={myScore}
-                    onChange={(event) => setMyScore(event.target.value === '' ? '' : Number(event.target.value))}
-                    className={clsx('w-24 h-24 border-2 rounded-2xl text-center text-4xl font-black focus:border-emerald-500 focus:outline-none transition-colors', theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900')}
-                  />
-                </div>
-                <div className={clsx('text-3xl font-black mt-8', theme === 'dark' ? 'text-zinc-700' : 'text-zinc-300')}>-</div>
-                <div className="text-center">
-                  <label className="block text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">{t('match.theirScore')}</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="99"
-                    value={opponentScore}
-                    onChange={(event) => setOpponentScore(event.target.value === '' ? '' : Number(event.target.value))}
-                    className={clsx('w-24 h-24 border-2 rounded-2xl text-center text-4xl font-black focus:border-emerald-500 focus:outline-none transition-colors', theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900')}
-                  />
-                </div>
+            {opponentConfirmed && !myConfirmed ? (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 text-amber-600">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">{t('match.opponentSubmitted', { name: opponentName })}</p>
               </div>
+            ) : null}
 
-              <button
-                onClick={() => void handleSubmitScore()}
-                disabled={submitting}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 rounded-xl font-bold text-lg transition-colors mt-8"
-              >
-                {submitting ? t('match.submitting') : t('match.submitVerify')}
-              </button>
+            <div className="flex items-center justify-center gap-8">
+              <div className="text-center">
+                <label className="block text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">{t('match.yourScore')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={myScore}
+                  onChange={(event) => setMyScore(event.target.value === '' ? '' : Number(event.target.value))}
+                  className={clsx('w-24 h-24 border-2 rounded-2xl text-center text-4xl font-black focus:border-emerald-500 focus:outline-none transition-colors', theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900')}
+                />
+              </div>
+              <div className={clsx('text-3xl font-black mt-8', theme === 'dark' ? 'text-zinc-700' : 'text-zinc-300')}>-</div>
+              <div className="text-center">
+                <label className="block text-sm font-bold text-zinc-500 uppercase tracking-wider mb-3">{t('match.theirScore')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={opponentScore}
+                  onChange={(event) => setOpponentScore(event.target.value === '' ? '' : Number(event.target.value))}
+                  className={clsx('w-24 h-24 border-2 rounded-2xl text-center text-4xl font-black focus:border-emerald-500 focus:outline-none transition-colors', theme === 'dark' ? 'bg-zinc-950 border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-200 text-zinc-900')}
+                />
+              </div>
             </div>
-          )}
+
+            <button
+              onClick={() => void handleSubmitScore()}
+              disabled={submitting}
+              className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 rounded-xl font-bold text-lg transition-colors mt-8"
+            >
+              {submitting ? t('match.submitting') : myConfirmed && !opponentConfirmed ? t('match.submitUpdate') : t('match.submitVerify')}
+            </button>
+          </div>
         </div>
       ) : null}
 

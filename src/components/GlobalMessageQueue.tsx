@@ -77,7 +77,9 @@ const copy = {
     cancel: 'Cancel',
     ready: 'I am Ready',
     submit: 'Submit Score',
+    resubmit: 'Update Score',
     submitted: 'Submitted',
+    scoreEditable: 'You already submitted. You can still change the score before your opponent confirms.',
     waitingForOpponent: 'Waiting for your opponent.',
     waitingForReady: 'You are ready. Waiting for your opponent.',
     opponentSubmitted: 'Your opponent already submitted a result.',
@@ -89,6 +91,7 @@ const copy = {
     challengerIncoming: 'Challenge received',
     tournamentReady: 'Professional match ready',
     tournamentLive: 'Professional score pending',
+    tournamentWaiting: 'Professional bracket pending',
     scoreMismatch: 'The two score submissions did not match and were reset.',
     scoreSubmitted: 'Score submitted. Waiting for confirmation.',
     scoreCompleted: 'Result confirmed.',
@@ -96,6 +99,7 @@ const copy = {
     tournamentReadyDone: 'You are ready. Waiting for your opponent.',
     tournamentReadyLive: 'Both players are ready. You can submit the final score.',
     opponentPending: 'Opponent pending',
+    bracketPending: 'Your slot is locked in. Waiting for the previous match to decide your opponent.',
   },
   zh: {
     title: '消息队列',
@@ -108,7 +112,9 @@ const copy = {
     cancel: '取消',
     ready: '我已就绪',
     submit: '提交比分',
+    resubmit: '重新提交比分',
     submitted: '已提交',
+    scoreEditable: '你已经提交过比分，但在对手确认前仍然可以修改并重新提交。',
     waitingForOpponent: '等待对手处理。',
     waitingForReady: '你已就绪，等待对手确认。',
     opponentSubmitted: '对手已经提交了结果。',
@@ -120,6 +126,7 @@ const copy = {
     challengerIncoming: '收到挑战',
     tournamentReady: '职业赛待就绪',
     tournamentLive: '职业赛待提交比分',
+    tournamentWaiting: '职业赛待补全对手',
     scoreMismatch: '双方提交结果不一致，比分已重置。',
     scoreSubmitted: '比分已提交，等待对手确认。',
     scoreCompleted: '结果已确认。',
@@ -127,6 +134,7 @@ const copy = {
     tournamentReadyDone: '你已就绪，等待对手确认。',
     tournamentReadyLive: '双方都已就绪，可以提交最终比分了。',
     opponentPending: '对手待定',
+    bracketPending: '你的签位已经确定，正在等待上一场比赛决出对手。',
   },
 } as const;
 
@@ -287,10 +295,13 @@ const buildTournamentQueueItem = (
   const matchLabel = getLocalizedMatchLabel(language, match);
 
   let state: QueueItem['state'] = 'waiting';
+  let subtitle: string = ui.bracketPending;
   if (match.status === 'pending') {
     state = myReady ? 'waiting_ready' : 'ready';
+    subtitle = ui.tournamentReady;
   } else if (match.status === 'ongoing' || match.status === 'waiting_confirmation') {
     state = 'score';
+    subtitle = ui.tournamentLive;
   }
 
   return {
@@ -299,7 +310,7 @@ const buildTournamentQueueItem = (
     tournament,
     match,
     title: `${tournament.name} · ${matchLabel}`,
-    subtitle: state === 'score' ? ui.tournamentLive : ui.tournamentReady,
+    subtitle,
     avatarUrl:
       opponentAvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(opponentName)}&background=random`,
@@ -398,7 +409,8 @@ export default function GlobalMessageQueue() {
           .filter(
             (match) =>
               (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid) &&
-              (match.status === 'pending' ||
+              (match.status === 'waiting' ||
+                match.status === 'pending' ||
                 match.status === 'ongoing' ||
                 match.status === 'waiting_confirmation'),
           )
@@ -703,6 +715,8 @@ export default function GlobalMessageQueue() {
                                 ? ui.challengerIncoming
                                 : item.state === 'outgoing'
                                   ? ui.challengerWaiting
+                                  : item.state === 'waiting'
+                                    ? ui.tournamentWaiting
                                   : item.state === 'ready' || item.state === 'waiting_ready'
                                     ? ui.tournamentReady
                                     : ui.tournamentLive}
@@ -781,6 +795,19 @@ export default function GlobalMessageQueue() {
                         </div>
                       ) : null}
 
+                      {item.kind === 'tournament' && item.state === 'waiting' ? (
+                        <div
+                          className={clsx(
+                            'flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm',
+                            tones.button,
+                            tones.muted,
+                          )}
+                        >
+                          <Clock3 className="h-4 w-4 text-amber-500" />
+                          {ui.bracketPending}
+                        </div>
+                      ) : null}
+
                       {(item.kind === 'casual' && item.state === 'score') ||
                       (item.kind === 'tournament' && item.state === 'score') ? (
                         <div className="space-y-3">
@@ -791,7 +818,9 @@ export default function GlobalMessageQueue() {
                               <Send className="h-4 w-4 text-emerald-500" />
                             )}
                             {item.myConfirmed
-                              ? ui.scoreSubmitted
+                              ? item.opponentConfirmed
+                                ? ui.opponentSubmitted
+                                : ui.scoreEditable
                               : item.opponentConfirmed
                                 ? ui.opponentSubmitted
                                 : ui.enterScores}
@@ -811,7 +840,7 @@ export default function GlobalMessageQueue() {
                                 min="0"
                                 inputMode="numeric"
                                 value={draft.myScore}
-                                disabled={busy || item.myConfirmed}
+                                disabled={busy}
                                 onChange={(event) => updateDraft(item.key, 'myScore', event.target.value)}
                                 className={clsx(
                                   'h-16 w-full rounded-2xl border text-center text-2xl font-black focus:border-emerald-500 focus:outline-none',
@@ -834,7 +863,7 @@ export default function GlobalMessageQueue() {
                                 min="0"
                                 inputMode="numeric"
                                 value={draft.opponentScore}
-                                disabled={busy || item.myConfirmed}
+                                disabled={busy}
                                 onChange={(event) =>
                                   updateDraft(item.key, 'opponentScore', event.target.value)
                                 }
@@ -846,7 +875,7 @@ export default function GlobalMessageQueue() {
                             </label>
                           </div>
 
-                          {item.myConfirmed ? (
+                          {item.myConfirmed && !item.opponentConfirmed ? (
                             <div
                               className={clsx(
                                 'flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm',
@@ -855,22 +884,28 @@ export default function GlobalMessageQueue() {
                               )}
                             >
                               <Check className="h-4 w-4 text-emerald-500" />
-                              {ui.waitingForOpponent}
+                              {ui.scoreEditable}
                             </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void (item.kind === 'casual'
-                                  ? handleCasualSubmit(item)
-                                  : handleTournamentSubmit(item))
-                              }
-                              disabled={busy}
-                              className="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60"
-                            >
-                              {busy ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : ui.submit}
-                            </button>
-                          )}
+                          ) : null}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void (item.kind === 'casual'
+                                ? handleCasualSubmit(item)
+                                : handleTournamentSubmit(item))
+                            }
+                            disabled={busy}
+                            className="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60"
+                          >
+                            {busy ? (
+                              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                            ) : item.myConfirmed && !item.opponentConfirmed ? (
+                              ui.resubmit
+                            ) : (
+                              ui.submit
+                            )}
+                          </button>
                         </div>
                       ) : null}
                     </div>
