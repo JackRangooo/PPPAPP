@@ -20,7 +20,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
-import CompetitiveDivisionBadge from '../components/CompetitiveDivisionBadge';
 import ProfileIdentityEditor from '../components/ProfileIdentityEditor';
 import PrizeIcon from '../components/PrizeIcon';
 import ProfileInventorySheet, { type InventoryTab } from '../components/ProfileInventorySheet';
@@ -385,27 +384,17 @@ export default function Profile() {
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 items-start gap-3">
-          <CompetitiveDivisionBadge
-            division={division}
-            stars={userProfile.casualStars}
-            starsLabel={t('profile.stars')}
-            theme={theme}
-            size="compact"
-            align="right"
-          />
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className={clsx(
-              'w-12 h-12 rounded-2xl border flex items-center justify-center transition-all active:scale-95 shrink-0',
-              theme === 'dark'
-                ? 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:text-white'
-                : 'bg-white border-zinc-200 text-zinc-500 hover:text-zinc-900 shadow-sm',
-            )}
-          >
-            <Settings className="w-6 h-6" />
-          </button>
-        </div>
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className={clsx(
+            'w-12 h-12 rounded-2xl border flex items-center justify-center transition-all active:scale-95 shrink-0',
+            theme === 'dark'
+              ? 'bg-zinc-900/50 border-white/5 text-zinc-400 hover:text-white'
+              : 'bg-white border-zinc-200 text-zinc-500 hover:text-zinc-900 shadow-sm',
+          )}
+        >
+          <Settings className="w-6 h-6" />
+        </button>
       </header>
 
       <section className="relative">
@@ -448,22 +437,15 @@ export default function Profile() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2 text-emerald-500">
-              <Star className="w-4 h-4 fill-current" />
-              <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
-            </div>
-            <CompetitiveDivisionBadge
-              division={division}
-              stars={userProfile.casualStars}
-              starsLabel={t('profile.stars')}
-              theme={theme}
-              size="compact"
-              align="right"
-            />
+          <div className="mb-4 flex items-center gap-2 text-emerald-500">
+            <Star className="w-4 h-4 fill-current" />
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {userProfile.casualStars} <span className="text-sm font-medium text-zinc-500">{t('profile.stars')}</span>
+          </div>
+          <div className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-amber-500">
+            {t('profile.division')}: {division.title}
           </div>
           <div className="text-xs text-zinc-500 font-medium mt-1">
             {userProfile.casualWins}W - {userProfile.casualLosses}L ({casualWinRate}%)

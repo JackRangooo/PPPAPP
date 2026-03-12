@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
-import CompetitiveDivisionBadge from '../components/CompetitiveDivisionBadge';
 import PrizeIcon from '../components/PrizeIcon';
 import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
 import { fetchPlayerProfile } from '../lib/api';
@@ -98,14 +97,6 @@ export default function PlayerProfile() {
             </div>
           </div>
         </div>
-        <CompetitiveDivisionBadge
-          division={division}
-          stars={player.casualStars}
-          starsLabel={t('profile.stars')}
-          theme={theme}
-          size="compact"
-          align="right"
-        />
       </div>
 
       <section className="relative">
@@ -125,22 +116,15 @@ export default function PlayerProfile() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div className="flex items-center gap-2 text-emerald-500">
-              <Star className="w-4 h-4 fill-current" />
-              <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
-            </div>
-            <CompetitiveDivisionBadge
-              division={division}
-              stars={player.casualStars}
-              starsLabel={t('profile.stars')}
-              theme={theme}
-              size="compact"
-              align="right"
-            />
+          <div className="mb-4 flex items-center gap-2 text-emerald-500">
+            <Star className="w-4 h-4 fill-current" />
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {player.casualStars} <span className={clsx('text-sm font-medium', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{t('leaderboard.stars')}</span>
+          </div>
+          <div className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-amber-500">
+            {t('profile.division')}: {division.title}
           </div>
           <div className={clsx('text-xs font-medium mt-1', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
             {player.casualWins}W - {player.casualLosses}L ({casualWinRate}%)

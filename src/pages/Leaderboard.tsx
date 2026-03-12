@@ -231,6 +231,7 @@ export default function Leaderboard() {
                       theme={theme}
                       size="compact"
                       align="right"
+                      hideTitle
                     />
                     {sortBy === 'points' ? (
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-black text-amber-500">
