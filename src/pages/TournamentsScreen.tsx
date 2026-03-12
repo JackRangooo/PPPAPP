@@ -275,6 +275,7 @@ export default function TournamentsScreen() {
     { id: 'ongoing' as const, label: ui.ongoingTab, hint: ui.ongoingHint, count: ongoingTournaments.length },
     { id: 'preview' as const, label: ui.previewTab, hint: ui.previewHint, count: 1 },
   ];
+  const shouldShowTournamentPicker = visibleTournaments.length > 1;
   const formatDateLabel = (value: string | Date) => format(new Date(value), language === 'zh' ? 'M月d日' : 'MMM d');
 
   const renderTournamentCard = (tournament: Tournament) => {
@@ -346,7 +347,9 @@ export default function TournamentsScreen() {
         <section className={clsx('rounded-[2rem] border p-8 text-center text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-900/45 text-zinc-500' : 'border-zinc-200 bg-white text-zinc-500 shadow-sm')}>{lane === 'registration' ? ui.noRegistration : ui.noOngoing}</section>
       ) : (
         <div className="space-y-6">
-          <div className="space-y-4">{visibleTournaments.map((tournament) => renderTournamentCard(tournament))}</div>
+          {shouldShowTournamentPicker ? (
+            <div className="space-y-4">{visibleTournaments.map((tournament) => renderTournamentCard(tournament))}</div>
+          ) : null}
           {featuredTournament ? (
             <>
               <section className={clsx('relative overflow-hidden rounded-[2.25rem] border p-6', theme === 'dark' ? 'border-amber-500/20 bg-[linear-gradient(135deg,rgba(120,53,15,0.4),rgba(17,24,39,0.94))]' : 'border-amber-200 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-sm')}>
