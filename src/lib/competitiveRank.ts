@@ -16,7 +16,18 @@ const DIVISIONS = [
   { minStars: 100, title: { en: 'Transcendent Apex', zh: '超越天巅' } },
 ] as const;
 
-export const getCompetitiveDivision = (stars: number, language: Language) => {
+export interface CompetitiveDivision {
+  index: number;
+  title: string;
+  minStars: number;
+  nextTitle: string;
+  nextStars: number | null;
+  starsIntoDivision: number;
+  starsRemaining: number;
+  shielded: boolean;
+}
+
+export const getCompetitiveDivision = (stars: number, language: Language): CompetitiveDivision => {
   const safeStars = Math.max(0, Math.floor(Number.isFinite(stars) ? stars : 0));
   const index = Math.min(Math.floor(safeStars / 10), DIVISIONS.length - 1);
   const current = DIVISIONS[index];

@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from 'react';
-import { Star, Swords } from 'lucide-react';
+import { Swords } from 'lucide-react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import CompetitiveDivisionBadge from '../components/CompetitiveDivisionBadge';
 import { createCasualMatch, listProfiles } from '../lib/api';
 import { getCompetitiveDivision } from '../lib/competitiveRank';
 import { subscribeToTable } from '../lib/supabase';
@@ -80,21 +81,26 @@ export default function CasualMatch({ search }: CasualMatchProps) {
                     <div className={clsx('font-bold text-lg truncate', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                       {currentUser.displayName}
                     </div>
-                    <div className="mt-1 truncate text-xs font-semibold uppercase tracking-[0.14em] text-amber-500">
-                      {division.title}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-zinc-500 font-medium">
-                      <Star className="w-4 h-4 text-emerald-500 fill-current" />
-                      {currentUser.casualStars} {t('profile.stars')}
+                    <div className="mt-1 truncate text-xs font-medium text-zinc-500">
+                      @{currentUser.nickname}
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => void handleChallenge(currentUser)}
-                  className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500 hover:text-zinc-950 transition-colors shrink-0"
-                >
-                  <Swords className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <CompetitiveDivisionBadge
+                    division={division}
+                    stars={currentUser.casualStars}
+                    starsLabel={t('profile.stars')}
+                    theme={theme}
+                    size="compact"
+                  />
+                  <button
+                    onClick={() => void handleChallenge(currentUser)}
+                    className="h-11 w-11 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center hover:bg-emerald-500 hover:text-zinc-950 transition-colors shrink-0"
+                  >
+                    <Swords className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             );
           })}

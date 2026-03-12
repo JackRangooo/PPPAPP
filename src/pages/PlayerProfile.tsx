@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import CompetitiveDivisionBadge from '../components/CompetitiveDivisionBadge';
 import PrizeIcon from '../components/PrizeIcon';
 import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
 import { fetchPlayerProfile } from '../lib/api';
@@ -73,31 +74,38 @@ export default function PlayerProfile() {
         </h1>
       </header>
 
-      <div className="flex items-center gap-4">
-        <div className="relative">
-          <img
-            src={player.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.displayName)}&background=random`}
-            alt={player.displayName}
-            className={clsx('w-20 h-20 rounded-full border-4 shadow-xl', theme === 'dark' ? 'border-zinc-900' : 'border-white')}
-            referrerPolicy="no-referrer"
-          />
-          <div className={clsx('absolute -bottom-1 -right-1 bg-emerald-500 text-zinc-950 p-1 rounded-full border-2', theme === 'dark' ? 'border-zinc-950' : 'border-white')}>
-            <Star className="w-4 h-4 fill-current" />
-          </div>
-        </div>
-        <div>
-          <h2 className={clsx('text-2xl font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            {player.displayName}
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-block rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-emerald-500">
-              {player.selectedTitle || t('profile.novicePlayer')}
-            </div>
-            <div className="inline-flex items-center rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
-              {division.title}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="relative shrink-0">
+            <img
+              src={player.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.displayName)}&background=random`}
+              alt={player.displayName}
+              className={clsx('w-20 h-20 rounded-full border-4 object-cover object-center shadow-xl', theme === 'dark' ? 'border-zinc-900' : 'border-white')}
+              referrerPolicy="no-referrer"
+            />
+            <div className={clsx('absolute -bottom-1 -right-1 bg-emerald-500 text-zinc-950 p-1 rounded-full border-2', theme === 'dark' ? 'border-zinc-950' : 'border-white')}>
+              <Star className="w-4 h-4 fill-current" />
             </div>
           </div>
+          <div className="min-w-0">
+            <h2 className={clsx('mb-1 truncate text-2xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+              {player.displayName}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-block rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-emerald-500">
+                {player.selectedTitle || t('profile.novicePlayer')}
+              </div>
+            </div>
+          </div>
         </div>
+        <CompetitiveDivisionBadge
+          division={division}
+          stars={player.casualStars}
+          starsLabel={t('profile.stars')}
+          theme={theme}
+          size="compact"
+          align="right"
+        />
       </div>
 
       <section className="relative">
@@ -115,17 +123,24 @@ export default function PlayerProfile() {
         />
       </section>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
-          <div className="flex items-center gap-2 text-emerald-500 mb-4">
-            <Star className="w-4 h-4 fill-current" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="flex items-center gap-2 text-emerald-500">
+              <Star className="w-4 h-4 fill-current" />
+              <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
+            </div>
+            <CompetitiveDivisionBadge
+              division={division}
+              stars={player.casualStars}
+              starsLabel={t('profile.stars')}
+              theme={theme}
+              size="compact"
+              align="right"
+            />
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {player.casualStars} <span className={clsx('text-sm font-medium', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{t('leaderboard.stars')}</span>
-          </div>
-          <div className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-amber-500">
-            {t('profile.division')}: {division.title}
           </div>
           <div className={clsx('text-xs font-medium mt-1', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
             {player.casualWins}W - {player.casualLosses}L ({casualWinRate}%)

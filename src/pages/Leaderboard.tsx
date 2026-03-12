@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
+import CompetitiveDivisionBadge from '../components/CompetitiveDivisionBadge';
 import { listLeaderboardProfiles } from '../lib/api';
 import { getCompetitiveDivision } from '../lib/competitiveRank';
 import { subscribeToTable } from '../lib/supabase';
@@ -216,28 +217,28 @@ export default function Leaderboard() {
                         <span className="truncate">{currentUser.displayName}</span>
                         {isMe ? <span className="text-[10px] bg-emerald-500 text-zinc-950 px-2 py-0.5 rounded-full uppercase tracking-wider">{t('leaderboard.you')}</span> : null}
                       </div>
-                      <div className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.16em] text-amber-500">
-                        {currentUser.division.title}
-                      </div>
                       <div className={clsx('text-xs font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
                         {currentUser.totalGames} {t('leaderboard.matchesPlayed')}
                       </div>
                     </div>
                   </Link>
 
-                  <div className="text-right shrink-0">
-                    {sortBy === 'stars' ? (
-                      <div className="flex items-center gap-1.5 text-xl font-black text-emerald-500">
-                        {currentUser.casualStars} <Star className="w-5 h-5 fill-current" />
-                      </div>
-                    ) : null}
+                  <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+                    <CompetitiveDivisionBadge
+                      division={currentUser.division}
+                      stars={currentUser.casualStars}
+                      starsLabel={t('profile.stars')}
+                      theme={theme}
+                      size="compact"
+                      align="right"
+                    />
                     {sortBy === 'points' ? (
-                      <div className="flex items-center gap-1.5 text-xl font-black text-amber-500">
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-black text-amber-500">
                         {currentUser.rankedPoints} <Trophy className="w-5 h-5" />
                       </div>
                     ) : null}
                     {sortBy === 'winrate' ? (
-                      <div className="flex items-center gap-1.5 text-xl font-black text-blue-500">
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-sm font-black text-blue-500">
                         {currentUser.winRate}% <Activity className="w-5 h-5" />
                       </div>
                     ) : null}
