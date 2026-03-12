@@ -1357,7 +1357,10 @@ begin
     update public.profiles
     set
       casual_losses = casual_losses + 1,
-      casual_stars = greatest(casual_stars - 1, 0),
+      casual_stars = case
+        when casual_stars <= 10 then casual_stars
+        else greatest(casual_stars - 1, 0)
+      end,
       inventory = public.append_title(inventory, 'Match Participant')
     where id = v_loser_id
       and not coalesce(is_root, false);
@@ -2348,7 +2351,9 @@ begin
       v_stars := v_stars + 1;
     else
       v_losses := v_losses + 1;
-      v_stars := greatest(v_stars - 1, 0);
+      if v_stars > 10 then
+        v_stars := greatest(v_stars - 1, 0);
+      end if;
     end if;
   end loop;
 

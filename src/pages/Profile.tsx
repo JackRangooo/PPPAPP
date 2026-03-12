@@ -34,6 +34,7 @@ import {
   updateProfileDisplayName,
   updateProfilePreferences,
 } from '../lib/api';
+import { getCompetitiveDivision } from '../lib/competitiveRank';
 import type { ShopProduct, Trophy as TrophyType, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
@@ -301,6 +302,7 @@ export default function Profile() {
     userProfile.casualWins + userProfile.casualLosses > 0
       ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
       : 0;
+  const division = getCompetitiveDivision(userProfile.casualStars, language);
 
   return (
     <div className="space-y-8 pb-12">
@@ -373,6 +375,9 @@ export default function Profile() {
               <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold uppercase tracking-widest">
                 {userProfile.selectedTitle || t('profile.novicePlayer')}
               </div>
+              <div className="inline-flex items-center rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
+                {division.title}
+              </div>
               {userProfile.isRoot ? (
                 <div className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
                   <ShieldAlert className="w-3.5 h-3.5" />
@@ -442,8 +447,18 @@ export default function Profile() {
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {userProfile.casualStars} <span className="text-sm font-medium text-zinc-500">{t('profile.stars')}</span>
           </div>
+          <div className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-amber-500">
+            {t('profile.division')}: {division.title}
+          </div>
           <div className="text-xs text-zinc-500 font-medium mt-1">
             {userProfile.casualWins}W - {userProfile.casualLosses}L ({casualWinRate}%)
+          </div>
+          <div className="text-xs text-zinc-500 font-medium mt-1">
+            {division.shielded
+              ? t('profile.starShieldOn')
+              : division.nextStars === null
+                ? t('profile.topDivision')
+                : t('profile.nextDivision', { count: String(division.starsRemaining), name: division.nextTitle })}
           </div>
         </div>
 

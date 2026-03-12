@@ -8,6 +8,7 @@ import { useAuth } from '../App';
 import PrizeIcon from '../components/PrizeIcon';
 import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
 import { fetchPlayerProfile } from '../lib/api';
+import { getCompetitiveDivision } from '../lib/competitiveRank';
 import { subscribeToTable } from '../lib/supabase';
 import type { Trophy as TrophyType, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -51,6 +52,7 @@ export default function PlayerProfile() {
     player.casualWins + player.casualLosses > 0
       ? Math.round((player.casualWins / (player.casualWins + player.casualLosses)) * 100)
       : 0;
+  const division = getCompetitiveDivision(player.casualStars, language);
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 pb-12">
@@ -87,8 +89,13 @@ export default function PlayerProfile() {
           <h2 className={clsx('text-2xl font-bold mb-1', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {player.displayName}
           </h2>
-          <div className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-bold uppercase tracking-widest">
-            {player.selectedTitle || t('profile.novicePlayer')}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-block rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-emerald-500">
+              {player.selectedTitle || t('profile.novicePlayer')}
+            </div>
+            <div className="inline-flex items-center rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">
+              {division.title}
+            </div>
           </div>
         </div>
       </div>
@@ -117,8 +124,18 @@ export default function PlayerProfile() {
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {player.casualStars} <span className={clsx('text-sm font-medium', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{t('leaderboard.stars')}</span>
           </div>
+          <div className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-amber-500">
+            {t('profile.division')}: {division.title}
+          </div>
           <div className={clsx('text-xs font-medium mt-1', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
             {player.casualWins}W - {player.casualLosses}L ({casualWinRate}%)
+          </div>
+          <div className={clsx('text-xs font-medium mt-1', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+            {division.shielded
+              ? t('profile.starShieldOn')
+              : division.nextStars === null
+                ? t('profile.topDivision')
+                : t('profile.nextDivision', { count: String(division.starsRemaining), name: division.nextTitle })}
           </div>
         </div>
 

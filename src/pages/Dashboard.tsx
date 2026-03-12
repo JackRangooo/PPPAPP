@@ -16,6 +16,7 @@ import {
   listUserRecentMatches,
   searchProfiles,
 } from '../lib/api';
+import { getCompetitiveDivision } from '../lib/competitiveRank';
 import { subscribeToTable } from '../lib/supabase';
 import type { Match, TournamentTimelineEvent, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -241,6 +242,7 @@ export default function Dashboard() {
     userProfile.casualWins + userProfile.casualLosses > 0
       ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
       : 0;
+  const division = getCompetitiveDivision(userProfile.casualStars, language);
 
   const feedTitle = language === 'zh' ? '赛事动态' : 'Tournament Feed';
   const feedEmpty =
@@ -407,6 +409,7 @@ export default function Dashboard() {
           <div>
             <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{userProfile.casualStars}</div>
             <div className="text-sm font-medium text-zinc-500">{t('profile.stars')}</div>
+            <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-amber-500">{division.title}</div>
           </div>
         </div>
 

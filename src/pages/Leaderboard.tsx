@@ -6,6 +6,7 @@ import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import { listLeaderboardProfiles } from '../lib/api';
+import { getCompetitiveDivision } from '../lib/competitiveRank';
 import { subscribeToTable } from '../lib/supabase';
 import type { UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -39,10 +40,12 @@ export default function Leaderboard() {
   const leaderboardUsers = users.map((currentUser) => {
     const totalGames = currentUser.casualWins + currentUser.casualLosses;
     const winRate = totalGames > 0 ? Math.round((currentUser.casualWins / totalGames) * 100) : 0;
+    const division = getCompetitiveDivision(currentUser.casualStars, language);
     return {
       ...currentUser,
       totalGames,
       winRate,
+      division,
     };
   });
 
@@ -211,6 +214,9 @@ export default function Leaderboard() {
                       <div className={clsx('font-bold text-lg flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                         <span className="truncate">{currentUser.displayName}</span>
                         {isMe ? <span className="text-[10px] bg-emerald-500 text-zinc-950 px-2 py-0.5 rounded-full uppercase tracking-wider">{t('leaderboard.you')}</span> : null}
+                      </div>
+                      <div className="mt-1 truncate text-[11px] font-black uppercase tracking-[0.16em] text-amber-500">
+                        {currentUser.division.title}
                       </div>
                       <div className={clsx('text-xs font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
                         {currentUser.totalGames} {t('leaderboard.matchesPlayed')}
