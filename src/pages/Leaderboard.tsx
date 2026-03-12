@@ -94,59 +94,81 @@ export default function Leaderboard() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      <header>
-        <h1 className={clsx('text-3xl font-bold tracking-tight mb-2 flex items-center gap-3', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-          <Award className="w-8 h-8 text-emerald-500" /> {t('nav.leaderboard')}
-        </h1>
-        <p className={clsx('font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
-          {t('leaderboard.subtitle')}
-        </p>
-      </header>
+      <header
+        className="-mx-4 sticky z-40 px-4 pb-4 pt-1 md:mx-0 md:px-0 md:pt-0"
+        style={{ top: 'max(env(safe-area-inset-top), 0.35rem)' }}
+      >
+        <div
+          className={clsx(
+            'relative overflow-hidden rounded-[2rem] border px-4 py-4 backdrop-blur-[26px] backdrop-saturate-150',
+            theme === 'dark'
+              ? 'border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.92),rgba(10,13,21,0.82))] shadow-[0_18px_40px_rgba(2,6,23,0.28),inset_0_1px_0_rgba(255,255,255,0.12)]'
+              : 'border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(244,247,255,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]',
+          )}
+        >
+          <span
+            className={clsx(
+              'pointer-events-none absolute inset-x-10 top-1 h-8 rounded-full blur-2xl',
+              theme === 'dark'
+                ? 'bg-[linear-gradient(90deg,rgba(16,185,129,0.14),rgba(255,255,255,0.08),rgba(59,130,246,0.14))]'
+                : 'bg-[linear-gradient(90deg,rgba(16,185,129,0.1),rgba(255,255,255,0.92),rgba(59,130,246,0.1))]',
+            )}
+          />
+          <div className="relative">
+            <h1 className={clsx('mb-2 flex items-center gap-3 text-3xl font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+              <Award className="h-8 w-8 text-emerald-500" /> {t('nav.leaderboard')}
+            </h1>
+            <p className={clsx('font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+              {t('leaderboard.subtitle')}
+            </p>
 
-      <div className={clsx('flex p-1 rounded-2xl border', theme === 'dark' ? 'bg-zinc-900/80 backdrop-blur-md border-white/10' : 'bg-white border-zinc-200 shadow-sm')}>
-        <button
-          onClick={() => setSortBy('stars')}
-          className={clsx(
-            'flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all',
-            sortBy === 'stars'
-              ? 'bg-emerald-500 text-zinc-950 shadow-lg'
-              : theme === 'dark'
-                ? 'text-zinc-400 hover:text-white'
-                : 'text-zinc-500 hover:text-zinc-900',
-          )}
-        >
-          <Star className={clsx('w-4 h-4', sortBy === 'stars' ? 'fill-zinc-950' : '')} />
-          {t('leaderboard.stars')}
-        </button>
-        <button
-          onClick={() => setSortBy('points')}
-          className={clsx(
-            'flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all',
-            sortBy === 'points'
-              ? 'bg-amber-500 text-zinc-950 shadow-lg'
-              : theme === 'dark'
-                ? 'text-zinc-400 hover:text-white'
-                : 'text-zinc-500 hover:text-zinc-900',
-          )}
-        >
-          <Trophy className="w-4 h-4" />
-          {t('leaderboard.points')}
-        </button>
-        <button
-          onClick={() => setSortBy('winrate')}
-          className={clsx(
-            'flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all',
-            sortBy === 'winrate'
-              ? 'bg-blue-500 text-zinc-950 shadow-lg'
-              : theme === 'dark'
-                ? 'text-zinc-400 hover:text-white'
-                : 'text-zinc-500 hover:text-zinc-900',
-          )}
-        >
-          <Activity className="w-4 h-4" />
-          {t('leaderboard.winRate')}
-        </button>
-      </div>
+            <div className={clsx('mt-4 flex rounded-2xl border p-1', theme === 'dark' ? 'border-white/10 bg-zinc-950/55' : 'border-zinc-200 bg-white/80 shadow-sm')}>
+              <button
+                onClick={() => setSortBy('stars')}
+                className={clsx(
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                  sortBy === 'stars'
+                    ? 'bg-emerald-500 text-zinc-950 shadow-lg'
+                    : theme === 'dark'
+                      ? 'text-zinc-400 hover:text-white'
+                      : 'text-zinc-500 hover:text-zinc-900',
+                )}
+              >
+                <Star className={clsx('h-4 w-4', sortBy === 'stars' ? 'fill-zinc-950' : '')} />
+                {t('leaderboard.stars')}
+              </button>
+              <button
+                onClick={() => setSortBy('points')}
+                className={clsx(
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                  sortBy === 'points'
+                    ? 'bg-amber-500 text-zinc-950 shadow-lg'
+                    : theme === 'dark'
+                      ? 'text-zinc-400 hover:text-white'
+                      : 'text-zinc-500 hover:text-zinc-900',
+                )}
+              >
+                <Trophy className="h-4 w-4" />
+                {t('leaderboard.points')}
+              </button>
+              <button
+                onClick={() => setSortBy('winrate')}
+                className={clsx(
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                  sortBy === 'winrate'
+                    ? 'bg-blue-500 text-zinc-950 shadow-lg'
+                    : theme === 'dark'
+                      ? 'text-zinc-400 hover:text-white'
+                      : 'text-zinc-500 hover:text-zinc-900',
+                )}
+              >
+                <Activity className="h-4 w-4" />
+                {t('leaderboard.winRate')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className="space-y-3">
         {loading ? (
