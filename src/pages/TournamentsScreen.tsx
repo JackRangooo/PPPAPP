@@ -275,32 +275,57 @@ export default function TournamentsScreen() {
     { id: 'ongoing' as const, label: ui.ongoingTab, hint: ui.ongoingHint, count: ongoingTournaments.length },
     { id: 'preview' as const, label: ui.previewTab, hint: ui.previewHint, count: 1 },
   ];
-  const shouldShowTournamentPicker = visibleTournaments.length > 1;
   const formatDateLabel = (value: string | Date) => format(new Date(value), language === 'zh' ? 'M月d日' : 'MMM d');
 
   const renderTournamentCard = (tournament: Tournament) => {
     const isSelected = featuredTournament?.id === tournament.id;
     const isRegistration = tournament.status === 'registration';
-    const cardSummary = isRegistration ? ui.cardSummaryRegistration : ui.cardSummaryOngoing;
 
     return (
-      <button key={tournament.id} type="button" onClick={() => setSelectedTournamentId(tournament.id)} className={clsx('w-full overflow-hidden rounded-[2rem] border text-left transition-all', isSelected ? theme === 'dark' ? 'border-amber-500/35 bg-[linear-gradient(135deg,rgba(120,53,15,0.45),rgba(17,24,39,0.92))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]' : 'border-amber-300 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]' : theme === 'dark' ? 'border-white/5 bg-zinc-900/45 hover:border-amber-500/20 hover:bg-zinc-900/75' : 'border-zinc-200 bg-white hover:border-amber-200 hover:bg-amber-50/40 shadow-sm')}>
-        <div className="relative p-5">
-          <div className="pointer-events-none absolute right-4 top-2 opacity-[0.08]"><TrophyIcon className="h-24 w-24 text-amber-500" /></div>
-          <div className="relative z-10">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[tournament.source])}>{tournament.source === 'admin' ? ui.adminSource : ui.systemSource}</span>
-              <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">{isRegistration ? ui.registrationTab : ui.ongoingTab}</span>
-            </div>
-            <div className={clsx('mt-4 text-2xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{tournament.name || t('play.weeklyChampionship')}</div>
+      <section
+        key={tournament.id}
+        onClick={() => setSelectedTournamentId(tournament.id)}
+        className={clsx(
+          'relative overflow-hidden rounded-[2.25rem] border p-6 transition-all',
+          isSelected
+            ? theme === 'dark'
+              ? 'border-amber-500/28 bg-[linear-gradient(135deg,rgba(120,53,15,0.4),rgba(17,24,39,0.94))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]'
+              : 'border-amber-300 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-[0_18px_40px_rgba(245,158,11,0.12)]'
+            : theme === 'dark'
+              ? 'border-white/8 bg-[linear-gradient(135deg,rgba(120,53,15,0.28),rgba(17,24,39,0.92))]'
+              : 'border-zinc-200 bg-[linear-gradient(135deg,rgba(255,247,237,1),rgba(255,255,255,1))] shadow-sm',
+        )}
+      >
+        <div className="pointer-events-none absolute right-4 top-0 opacity-[0.08]"><TrophyIcon className="h-36 w-36 text-amber-500" /></div>
+        <div className="relative z-10 space-y-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[tournament.source])}>{tournament.source === 'admin' ? ui.adminSource : ui.systemSource}</span>
+            <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">{isRegistration ? ui.registrationTab : ui.ongoingTab}</span>
+          </div>
+          <div>
+            <h3 className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{tournament.name}</h3>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-500">
               <div className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDateLabel(tournament.startDate)} - {formatDateLabel(tournament.endDate)}</div>
               <div className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{tournament.participants.length} {ui.participants}</div>
             </div>
-            <div className={clsx('mt-4 inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium', theme === 'dark' ? 'bg-zinc-950/75 text-zinc-100' : 'bg-zinc-950 text-zinc-100')}><Shield className="h-4 w-4 text-emerald-500" /><span>{cardSummary}</span></div>
+          </div>
+          <div className={clsx('rounded-[1.6rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/65 text-zinc-300' : 'border-zinc-200 bg-white/75 text-zinc-700')}>
+            <div>{ui.minPlayersHint}</div>
+            <div className="mt-1">{ui.registrationClosed}</div>
+            <div className="mt-1">{ui.bracketHint}</div>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {tournament.status === 'registration' ? (
+              <button onClick={() => void handleRegister(tournament.id)} disabled={busy || tournament.participants.includes(userProfile?.uid || '')} className="rounded-2xl bg-amber-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{tournament.participants.includes(userProfile?.uid || '') ? t('play.registered') : t('play.joinTournament')}</button>
+            ) : (
+              <button onClick={() => { setSelectedTournamentId(tournament.id); setBracketOpen(true); }} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white hover:bg-zinc-900' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>{ui.viewBracket}</button>
+            )}
+            {canManageTournament && tournament.status === 'registration' ? <button onClick={() => void handleStartTournament(tournament)} disabled={busy} className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60">{ui.startTournament}</button> : null}
+            {canManageTournament && tournament.status !== 'completed' && tournament.status !== 'cancelled' ? <button onClick={() => void handleCancelTournament(tournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-900 text-white hover:bg-zinc-800' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>{ui.cancelTournament}</button> : null}
+            {canManageTournament && tournament.status === 'ongoing' ? <button onClick={() => void handleForceSettle(tournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-800 text-white hover:bg-zinc-700' : 'border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200')}>{ui.forceSettle}</button> : null}
           </div>
         </div>
-      </button>
+      </section>
     );
   };
 
@@ -347,38 +372,9 @@ export default function TournamentsScreen() {
         <section className={clsx('rounded-[2rem] border p-8 text-center text-sm font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-900/45 text-zinc-500' : 'border-zinc-200 bg-white text-zinc-500 shadow-sm')}>{lane === 'registration' ? ui.noRegistration : ui.noOngoing}</section>
       ) : (
         <div className="space-y-6">
-          {shouldShowTournamentPicker ? (
-            <div className="space-y-4">{visibleTournaments.map((tournament) => renderTournamentCard(tournament))}</div>
-          ) : null}
+          <div className="space-y-4">{visibleTournaments.map((tournament) => renderTournamentCard(tournament))}</div>
           {featuredTournament ? (
             <>
-              <section className={clsx('relative overflow-hidden rounded-[2.25rem] border p-6', theme === 'dark' ? 'border-amber-500/20 bg-[linear-gradient(135deg,rgba(120,53,15,0.4),rgba(17,24,39,0.94))]' : 'border-amber-200 bg-[linear-gradient(135deg,rgba(255,237,213,1),rgba(255,255,255,1))] shadow-sm')}>
-                <div className="pointer-events-none absolute right-4 top-0 opacity-[0.08]"><TrophyIcon className="h-36 w-36 text-amber-500" /></div>
-                <div className="relative z-10 space-y-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={clsx('rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.18em]', badgeStyles[featuredTournament.source])}>{featuredTournament.source === 'admin' ? ui.adminSource : ui.systemSource}</span>
-                    <span className="rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500">{featuredTournament.status === 'registration' ? ui.registrationTab : ui.ongoingTab}</span>
-                  </div>
-                  <div>
-                    <h3 className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{featuredTournament.name}</h3>
-                    <div className="mt-3 flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-500">
-                      <div className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDateLabel(featuredTournament.startDate)} - {formatDateLabel(featuredTournament.endDate)}</div>
-                      <div className="inline-flex items-center gap-1.5"><Users className="h-4 w-4" />{featuredTournament.participants.length} {ui.participants}</div>
-                    </div>
-                  </div>
-                  <div className={clsx('rounded-[1.6rem] border px-4 py-4 text-sm font-medium leading-6', theme === 'dark' ? 'border-white/8 bg-zinc-950/65 text-zinc-300' : 'border-zinc-200 bg-white/75 text-zinc-700')}>
-                    <div>{ui.minPlayersHint}</div>
-                    <div className="mt-1">{ui.registrationClosed}</div>
-                    <div className="mt-1">{ui.bracketHint}</div>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    {featuredTournament.status === 'registration' ? <button onClick={() => void handleRegister(featuredTournament.id)} disabled={busy || featuredTournament.participants.includes(userProfile?.uid || '')} className="rounded-2xl bg-amber-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60">{featuredTournament.participants.includes(userProfile?.uid || '') ? t('play.registered') : t('play.joinTournament')}</button> : <button onClick={() => setBracketOpen(true)} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white hover:bg-zinc-900' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>{ui.viewBracket}</button>}
-                    {canManageTournament && featuredTournament.status === 'registration' ? <button onClick={() => void handleStartTournament(featuredTournament)} disabled={busy} className="rounded-2xl bg-emerald-500 px-6 py-3 font-black text-zinc-950 transition-colors hover:bg-emerald-400 disabled:opacity-60">{ui.startTournament}</button> : null}
-                    {canManageTournament && featuredTournament.status !== 'completed' && featuredTournament.status !== 'cancelled' ? <button onClick={() => void handleCancelTournament(featuredTournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-900 text-white hover:bg-zinc-800' : 'border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50')}>{ui.cancelTournament}</button> : null}
-                    {canManageTournament && featuredTournament.status === 'ongoing' ? <button onClick={() => void handleForceSettle(featuredTournament)} disabled={busy} className={clsx('rounded-2xl border px-6 py-3 font-black transition-colors', theme === 'dark' ? 'border-white/10 bg-zinc-800 text-white hover:bg-zinc-700' : 'border-zinc-200 bg-zinc-100 text-zinc-900 hover:bg-zinc-200')}>{ui.forceSettle}</button> : null}
-                  </div>
-                </div>
-              </section>
               <section className={clsx('rounded-[2rem] border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
                 <div className="mb-4 flex items-center gap-2"><MessageSquare className="h-5 w-5 text-sky-500" /><h2 className={clsx('text-lg font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.matchComments}</h2></div>
                 {selectedMatch && (selectedMatch.status === 'completed' || selectedMatch.status === 'walkover') ? (
