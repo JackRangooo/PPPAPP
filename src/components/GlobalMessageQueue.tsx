@@ -31,6 +31,7 @@ import {
 } from '../lib/tournamentBracket';
 import { subscribeToTable } from '../lib/supabase';
 import type { Language, Match, Tournament, TournamentBracketMatch } from '../types';
+import { useTranslation } from '../i18n';
 
 type ScoreDraft = {
   myScore: string;
@@ -102,39 +103,39 @@ const copy = {
     bracketPending: 'Your slot is locked in. Waiting for the previous match to decide your opponent.',
   },
   zh: {
-    title: 'ÏûÏ¢ÆøÅÝ',
-    subtitle: 'ËæÊ±´¦Àí±ÈÈüÏà¹Ø²Ù×÷¡£',
-    empty: 'µ±Ç°Ã»ÓÐ´ý´¦ÀíµÄ±ÈÈüÏûÏ¢¡£',
-    casual: 'ÅÅÎ»Èü',
-    tournament: 'Ö°ÒµÈü',
-    accept: '½ÓÊÜ',
-    decline: '¾Ü¾ø',
-    cancel: 'È¡Ïû',
-    ready: '×¼±¸¾ÍÐ÷',
-    submit: 'Ìá½»±È·Ö',
-    resubmit: 'ÖØÐÂÌá½»',
-    submitted: 'ÒÑÌá½»',
-    scoreEditable: 'ÄãÒÑ¾­Ìá½»¹ý±È·Ö£¬µ«ÔÚ¶ÔÊÖÈ·ÈÏÇ°ÈÔÈ»¿ÉÒÔÐÞ¸Ä¡£',
-    waitingForOpponent: 'µÈ´ý¶ÔÊÖ´¦Àí¡£',
-    waitingForReady: 'ÄãÒÑ×¼±¸¾ÍÐ÷£¬µÈ´ý¶ÔÊÖ¡£',
-    opponentSubmitted: '¶ÔÊÖÒÑ¾­Ìá½»ÁËÒ»¸ö½á¹û¡£',
-    enterScores: 'ÇëÊäÈë×îÖÕ±È·Ö£¬²»ÄÜÆ½·Ö¡£',
-    yourScore: 'Äã',
-    theirScore: '¶ÔÊÖ',
-    open: 'ÏûÏ¢',
-    challengerWaiting: 'ÒÑ·¢ÆðÌôÕ½',
-    challengerIncoming: 'ÊÕµ½ÌôÕ½',
-    tournamentReady: 'Ö°ÒµÈü¿ÉÒÔ¿ªÊ¼',
-    tournamentLive: 'Ö°ÒµÈü´ýÌá½»±È·Ö',
-    tournamentWaiting: 'Ö°ÒµÈüµÈ´ý¶ÔÊÖ',
-    scoreMismatch: 'Ë«·½Ìá½»µÄ±È·Ö²»Ò»ÖÂ£¬ÏµÍ³ÒÑÖØÖÃ¡£',
-    scoreSubmitted: '±È·ÖÒÑÌá½»£¬µÈ´ýÈ·ÈÏ¡£',
-    scoreCompleted: '½á¹ûÒÑÈ·ÈÏ¡£',
-    actionFailed: '²Ù×÷Ê§°Ü¡£',
-    tournamentReadyDone: 'ÄãÒÑ×¼±¸¾ÍÐ÷£¬µÈ´ý¶ÔÊÖ¡£',
-    tournamentReadyLive: 'Ë«·½¶¼ÒÑ×¼±¸¾ÍÐ÷£¬¿ÉÒÔÌá½»×îÖÕ±È·Ö¡£',
-    opponentPending: 'µÈ´ý¶ÔÊÖ',
-    bracketPending: 'ÄãµÄÇ©Î»ÒÑ¾­È·¶¨£¬ÕýÔÚµÈ´ýÉÏÒ»³¡±ÈÈü¾ö³ö¶ÔÊÖ¡£',
+    title: '\u6d88\u606f\u6c14\u6ce1',
+    subtitle: '\u968f\u65f6\u5904\u7406\u6bd4\u8d5b\u76f8\u5173\u64cd\u4f5c\u3002',
+    empty: '\u5f53\u524d\u6ca1\u6709\u5f85\u5904\u7406\u7684\u6bd4\u8d5b\u6d88\u606f\u3002',
+    casual: '\u6392\u4f4d\u8d5b',
+    tournament: '\u804c\u4e1a\u8d5b',
+    accept: '\u63a5\u53d7',
+    decline: '\u62d2\u7edd',
+    cancel: '\u53d6\u6d88',
+    ready: '\u51c6\u5907\u5c31\u7eea',
+    submit: '\u63d0\u4ea4\u6bd4\u5206',
+    resubmit: '\u91cd\u65b0\u63d0\u4ea4',
+    submitted: '\u5df2\u63d0\u4ea4',
+    scoreEditable: '\u4f60\u5df2\u7ecf\u63d0\u4ea4\u8fc7\u6bd4\u5206\uff0c\u4f46\u5728\u5bf9\u624b\u786e\u8ba4\u524d\u4ecd\u7136\u53ef\u4ee5\u4fee\u6539\u3002',
+    waitingForOpponent: '\u7b49\u5f85\u5bf9\u624b\u5904\u7406\u3002',
+    waitingForReady: '\u4f60\u5df2\u51c6\u5907\u5c31\u7eea\uff0c\u7b49\u5f85\u5bf9\u624b\u3002',
+    opponentSubmitted: '\u5bf9\u624b\u5df2\u7ecf\u63d0\u4ea4\u4e86\u4e00\u4e2a\u7ed3\u679c\u3002',
+    enterScores: '\u8bf7\u8f93\u5165\u6700\u7ec8\u6bd4\u5206\uff0c\u4e0d\u80fd\u5e73\u5206\u3002',
+    yourScore: '\u4f60',
+    theirScore: '\u5bf9\u624b',
+    open: '\u6d88\u606f',
+    challengerWaiting: '\u5df2\u53d1\u8d77\u6311\u6218',
+    challengerIncoming: '\u6536\u5230\u6311\u6218',
+    tournamentReady: '\u804c\u4e1a\u8d5b\u53ef\u4ee5\u5f00\u59cb',
+    tournamentLive: '\u804c\u4e1a\u8d5b\u5f85\u63d0\u4ea4\u6bd4\u5206',
+    tournamentWaiting: '\u804c\u4e1a\u8d5b\u7b49\u5f85\u5bf9\u624b',
+    scoreMismatch: '\u53cc\u65b9\u63d0\u4ea4\u7684\u6bd4\u5206\u4e0d\u4e00\u81f4\uff0c\u7cfb\u7edf\u5df2\u91cd\u7f6e\u3002',
+    scoreSubmitted: '\u6bd4\u5206\u5df2\u63d0\u4ea4\uff0c\u7b49\u5f85\u786e\u8ba4\u3002',
+    scoreCompleted: '\u7ed3\u679c\u5df2\u786e\u8ba4\u3002',
+    actionFailed: '\u64cd\u4f5c\u5931\u8d25\u3002',
+    tournamentReadyDone: '\u4f60\u5df2\u51c6\u5907\u5c31\u7eea\uff0c\u7b49\u5f85\u5bf9\u624b\u3002',
+    tournamentReadyLive: '\u53cc\u65b9\u90fd\u5df2\u51c6\u5907\u5c31\u7eea\uff0c\u53ef\u4ee5\u63d0\u4ea4\u6700\u7ec8\u6bd4\u5206\u3002',
+    opponentPending: '\u7b49\u5f85\u5bf9\u624b',
+    bracketPending: '\u4f60\u7684\u7b7e\u4f4d\u5df2\u7ecf\u786e\u5b9a\uff0c\u6b63\u5728\u7b49\u5f85\u4e0a\u4e00\u573a\u6bd4\u8d5b\u51b3\u51fa\u5bf9\u624b\u3002',
   },
 } as const;
 
@@ -187,10 +188,10 @@ const localizeLegacyMatchLabel = (language: Language, label: string) => {
   }
 
   return label
-    .replace(/^Grand Final$/, '¾öÈü')
-    .replace(/^Third Place Match$/, '¼¾¾üÈü')
-    .replace(/^Semifinal (\d+)$/, '°ë¾öÈü $1')
-    .replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, '×Ê¸ñÈü $2');
+    .replace(/^Grand Final$/, 'ï¿½ï¿½ï¿½ï¿½')
+    .replace(/^Third Place Match$/, 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½')
+    .replace(/^Semifinal (\d+)$/, 'ï¿½ï¿½ï¿½ï¿½ï¿½ $1')
+    .replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, 'ï¿½Ê¸ï¿½ï¿½ï¿½ $2');
 };
 
 const localizeBracketSource = (language: Language, source: string | null) => {
@@ -204,12 +205,12 @@ const localizeBracketSource = (language: Language, source: string | null) => {
 
   const winnerMatch = source.match(/^Winner of (.+)$/);
   if (winnerMatch) {
-    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}Ê¤Õß`;
+    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}Ê¤ï¿½ï¿½`;
   }
 
   const loserMatch = source.match(/^Loser of (.+)$/);
   if (loserMatch) {
-    return `${localizeLegacyMatchLabel(language, loserMatch[1])}°ÜÕß`;
+    return `${localizeLegacyMatchLabel(language, loserMatch[1])}ï¿½ï¿½ï¿½ï¿½`;
   }
 
   return localizeLegacyMatchLabel(language, source);
@@ -217,18 +218,18 @@ const localizeBracketSource = (language: Language, source: string | null) => {
 
 const getLocalizedMatchLabel = (language: Language, match: TournamentBracketMatch) => {
   if (match.stage === 'final') {
-    return language === 'zh' ? '¾öÈü' : 'Grand Final';
+    return language === 'zh' ? 'ï¿½ï¿½ï¿½ï¿½' : 'Grand Final';
   }
 
   if (match.stage === 'third_place') {
-    return language === 'zh' ? '¼¾¾üÈü' : 'Third Place Match';
+    return language === 'zh' ? 'ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½' : 'Third Place Match';
   }
 
   if (match.stage === 'semifinal') {
-    return language === 'zh' ? `°ë¾öÈü ${match.slot}` : `Semifinal ${match.slot}`;
+    return language === 'zh' ? `ï¿½ï¿½ï¿½ï¿½ï¿½ ${match.slot}` : `Semifinal ${match.slot}`;
   }
 
-  return language === 'zh' ? `×Ê¸ñÈü ${match.slot}` : `Qualifier ${match.slot}`;
+  return language === 'zh' ? `ï¿½Ê¸ï¿½ï¿½ï¿½ ${match.slot}` : `Qualifier ${match.slot}`;
 };
 
 const buildCasualQueueItem = (match: Match, userId: string, ui: typeof copy.en): QueueItem => {
@@ -289,7 +290,7 @@ const buildTournamentQueueItem = (
     kind: 'tournament',
     tournament,
     match,
-    title: `${tournament.name} ¡¤ ${matchLabel}`,
+    title: `${tournament.name} ï¿½ï¿½ ${matchLabel}`,
     subtitle,
     avatarUrl:
       opponentAvatarUrl ||
