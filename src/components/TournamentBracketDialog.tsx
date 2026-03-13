@@ -54,15 +54,15 @@ const copy = {
     quarterfinal: 'Qualifier',
   },
   zh: {
-    viewerHint: '对阵表已改成紧凑模式，直接在窗口内横向或纵向滑动即可查看完整签表。',
+    viewerHint: '这是紧凑版对阵表，可在窗口内拖动查看完整签表。',
     selectedMatch: '当前选中比赛',
-    waitingPlayers: '要先让双方球员进入这个签位，管理员才能直接录入比分。',
-    adminOnly: 'root 管理员可以在这里直接结算当前选中的对阵。',
+    waitingPlayers: '需要先让双方球员进入这个签位，管理员才能直接录入比分。',
+    adminOnly: '只有 root 管理员可以在这里直接结算当前选中的对阵。',
     player1: '选手 1',
     player2: '选手 2',
-    submitHint: '在这里保存最终比分后，这场对阵会立刻完成结算。',
+    submitHint: '在这里保存最终比分后，这场对阵会立即完成结算。',
     enterScore: '请输入不相同的最终比分。',
-    noneSelected: '先在对阵表里点选一场比赛。',
+    noneSelected: '先在对阵表里选中一场比赛。',
     notAvailable: '这场比赛已经结算完成。',
     unknown: '待定',
     score: '比分',
@@ -91,12 +91,12 @@ const getSourceLabel = (language: Language, source: string | null) => {
 
   const winnerMatch = source.match(/^Winner of (.+)$/);
   if (winnerMatch) {
-    return `${winnerMatch[1]}胜者`;
+    return `${winnerMatch[1].replace(/^Grand Final$/, '决赛').replace(/^Third Place Match$/, '季军赛').replace(/^Semifinal (\d+)$/, '半决赛 $1').replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, '资格赛 $2')}胜者`;
   }
 
   const loserMatch = source.match(/^Loser of (.+)$/);
   if (loserMatch) {
-    return `${loserMatch[1]}败者`;
+    return `${loserMatch[1].replace(/^Grand Final$/, '决赛').replace(/^Third Place Match$/, '季军赛').replace(/^Semifinal (\d+)$/, '半决赛 $1').replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, '资格赛 $2')}败者`;
   }
 
   return source
@@ -408,3 +408,7 @@ export default function TournamentBracketDialog({
     </AnimatePresence>
   );
 }
+
+
+
+

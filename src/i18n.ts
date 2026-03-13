@@ -180,7 +180,7 @@ export const translations = {
       leaderboard: '全球排行',
     },
     login: {
-      subtitle: '面向认真打球玩家的私人俱乐部，记录比赛，持续上分。',
+      subtitle: '面向认真打球玩家的私密俱乐部，记录比赛，持续上分。',
       loginTab: '登录',
       registerTab: '注册',
       nicknameLabel: '昵称',
@@ -199,7 +199,7 @@ export const translations = {
       registerAction: '创建账号',
       loggingIn: '登录中...',
       creatingAccount: '创建中...',
-      localFirstTitle: '不需要邮箱',
+      localFirstTitle: '无需邮箱',
       loginHint: '登录成功后，本机会默认保持登录状态，下次打开会直接进入应用。',
       registerHint: '使用昵称和密码即可注册，创建完成后会自动登录。',
     },
@@ -246,7 +246,7 @@ export const translations = {
       noActiveTournaments: '当前没有可参与的职业赛。',
       pastTournaments: '往期职业赛',
       weekOf: '当周',
-      participants: '参与者',
+      participants: '球员',
       noPastTournaments: '暂无历史职业赛。',
       registrationOpen: '报名开放中',
       registerSuccess: '职业赛报名成功。',
@@ -262,13 +262,13 @@ export const translations = {
       showcase: '奖杯展示柜',
       trophyShowcase: '奖杯展示柜',
       backpack: '背包',
-      casualStats: '排位数据',
+      casualStats: '排位赛数据',
       rankedStats: '职业赛数据',
       stars: '星数',
       points: '积分',
       avgRank: '平均排名',
       division: '段位',
-      starShieldOn: '10 星及以下处于保星期，失利不会掉星。',
+      starShieldOn: '10 星及以下处于保星期，失败不会掉星。',
       nextDivision: '距离 {name} 还差 {count} 星',
       topDivision: '你已处于当前最高段位。',
       appearance: '外观',
@@ -281,14 +281,14 @@ export const translations = {
       signOut: '退出登录',
       trophies: '奖杯',
       titles: '称号',
-      winToEarn: '赢下锦标赛来获得奖杯。',
+      winToEarn: '赢下职业赛可获得奖杯。',
       remove: '取下',
       display: '展示',
       close: '关闭',
       rank: '排名',
       date: '日期',
       novicePlayer: '新手球员',
-      renameFailed: '重命名失败，请稍后再试。',
+      renameFailed: '修改名称失败，请稍后再试。',
       showcaseFull: '展示柜已满，请先取下一个奖杯。',
       playerNotFound: '未找到该球员。',
       playerProfile: '球员资料',
@@ -370,6 +370,3 @@ export const useTranslation = (lang: Language) => {
     }, value);
   };
 };
-
-
-

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+﻿import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Camera, Loader2, RefreshCcw, Save, UserRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
@@ -32,17 +32,17 @@ const copy = {
     nicknameHint: '3-24 characters. This is also the account you use to sign in.',
   },
   zh: {
-    title: 'Edit Profile',
-    subtitle: 'Update your avatar, display name, and login nickname together.',
-    displayName: 'Display Name',
-    nickname: 'Login Nickname',
-    upload: 'Upload Avatar',
-    resetAvatar: 'Use Default Avatar',
-    save: 'Save Changes',
-    cancel: 'Cancel',
-    invalidFile: 'Please upload an image file.',
-    imageTooLarge: 'Avatar image is too large to process.',
-    nicknameHint: '3-24 characters. This is also the account you use to sign in.',
+    title: '编辑资料',
+    subtitle: '统一修改头像、显示名称和登录账号。',
+    displayName: '显示名称',
+    nickname: '登录账号',
+    upload: '上传头像',
+    resetAvatar: '恢复默认头像',
+    save: '保存修改',
+    cancel: '取消',
+    invalidFile: '请上传图片文件。',
+    imageTooLarge: '头像图片过大，无法处理。',
+    nicknameHint: '长度 3-24 个字符，同时也是你的登录账号。',
   },
 } as const;
 
@@ -285,3 +285,4 @@ export default function ProfileIdentityEditor({
     </AnimatePresence>
   );
 }
+

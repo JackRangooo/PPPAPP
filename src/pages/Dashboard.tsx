@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, zhCN } from 'date-fns/locale';
@@ -37,16 +37,86 @@ import { useTranslation } from '../i18n';
 
 const ACTIVITY_MATCH_LIMIT = 1000;
 
-const localizeBracketLabel = (_language: 'en' | 'zh', value: string) => {
-  return value;
+const localizeBracketLabel = (language: 'en' | 'zh', value: string) => {
+  if (language === 'en') {
+    return value;
+  }
+
+  return value
+    .replace(/^Grand Final$/, '决赛')
+    .replace(/^Third Place Match$/, '季军赛')
+    .replace(/^Semifinal (\d+)$/, '半决赛 $1')
+    .replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, '资格赛 $2');
 };
 
-const localizeTimelineTitle = (_language: 'en' | 'zh', title: string) => {
-  return title;
+const localizeTimelineTitle = (language: 'en' | 'zh', title: string) => {
+  if (language === 'en') {
+    return title;
+  }
+
+  const championMatch = title.match(/^(.+) won (.+)$/);
+  if (championMatch) {
+    return `${championMatch[1]} 赢下了 ${championMatch[2]}`;
+  }
+
+  const cancelledMatch = title.match(/^(.+) was cancelled$/);
+  if (cancelledMatch) {
+    return `${cancelledMatch[1]} 已取消`;
+  }
+
+  const liveMatch = title.match(/^(.+) is live$/);
+  if (liveMatch) {
+    return `${liveMatch[1]} 已开赛`;
+  }
+
+  const readyMatch = title.match(/^(.+) is ready$/);
+  if (readyMatch) {
+    return `${localizeBracketLabel(language, readyMatch[1])} 已就绪`;
+  }
+
+  const walkoverMatch = title.match(/^(.+) moved on from (.+) with a walkover$/);
+  if (walkoverMatch) {
+    return `${walkoverMatch[1]} 在 ${localizeBracketLabel(language, walkoverMatch[2])} 中轮空晋级`;
+  }
+
+  const completedMatch = title.match(/^(.+) beat (.+) in (.+)$/);
+  if (completedMatch) {
+    return `${completedMatch[1]} 在 ${localizeBracketLabel(language, completedMatch[3])} 中击败了 ${completedMatch[2]}`;
+  }
+
+  return localizeBracketLabel(language, title);
 };
 
-const localizeTimelineDescription = (_language: 'en' | 'zh', description: string) => {
-  return description;
+const localizeTimelineDescription = (language: 'en' | 'zh', description: string) => {
+  if (language === 'en') {
+    return description;
+  }
+
+  const readyMatch = description.match(/^(.+) and (.+) are ready to play\.$/);
+  if (readyMatch) {
+    return `${readyMatch[1]} 和 ${readyMatch[2]} 都已准备就绪。`;
+  }
+
+  const walkoverMatch = description.match(/^(.+) moved on from (.+) with a walkover\.$/);
+  if (walkoverMatch) {
+    return `${walkoverMatch[1]} 在 ${localizeBracketLabel(language, walkoverMatch[2])} 中因轮空晋级。`;
+  }
+
+  const completedMatch = description.match(/^(.+) beat (.+) in (.+)\.$/);
+  if (completedMatch) {
+    return `${completedMatch[1]} 在 ${localizeBracketLabel(language, completedMatch[3])} 中击败了 ${completedMatch[2]}`;
+  }
+
+  const championMatch = description.match(/^(.+) is the new champion, and (.+) claimed third place\.$/);
+  if (championMatch) {
+    return `${championMatch[1]} 成为本届冠军，${championMatch[2]} 获得季军。`;
+  }
+
+  if (description === 'The root admin closed this event before it finished.') {
+    return '管理员在赛事完成前关闭了本场赛事。';
+  }
+
+  return localizeBracketLabel(language, description);
 };
 
 const formatRelativeTime = (language: 'en' | 'zh', value: string) =>
@@ -170,12 +240,12 @@ export default function Dashboard() {
   const adminCopy =
     language === 'zh'
       ? {
-          deleteFeed: 'Delete Feed',
-          deleteFeedConfirm: 'Delete this tournament feed item?',
-          deleteFeedFailed: 'Failed to delete this feed item.',
-          deleteMatch: 'Delete Match',
-          deleteMatchConfirm: 'Delete this recent match?',
-          deleteMatchFailed: 'Failed to delete this recent match.',
+          deleteFeed: '删除简讯',
+          deleteFeedConfirm: '确认删除这条赛事简讯吗？',
+          deleteFeedFailed: '删除赛事简讯失败。',
+          deleteMatch: '删除比赛',
+          deleteMatchConfirm: '确认删除这条最近比赛吗？',
+          deleteMatchFailed: '删除最近比赛失败。',
         }
       : {
           deleteFeed: 'Delete Feed',
@@ -186,8 +256,8 @@ export default function Dashboard() {
           deleteMatchFailed: 'Failed to delete this recent match.',
         };
 
-  const feedTitle = `${sportLabel} Tournament Feed`;
-  const feedEmpty = 'Bracket starts, advances, and title wins will show up here.';
+  const feedTitle = language === 'zh' ? `${sportLabel}赛事简讯` : `${sportLabel} Tournament Feed`;
+  const feedEmpty = language === 'zh' ? '开赛、晋级和夺冠等动态会显示在这里。' : 'Bracket starts, advances, and title wins will show up here.';
 
   const refreshMatches = async () => {
     setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT, sport));
@@ -504,7 +574,7 @@ export default function Dashboard() {
                             {opponentName}
                           </div>
                           <div className="text-xs font-medium text-zinc-500">
-                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} · {formatRelativeTime(language, match.createdAt)}
+                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} 路 {formatRelativeTime(language, match.createdAt)}
                           </div>
                         </div>
                       </div>
@@ -551,6 +621,9 @@ export default function Dashboard() {
     </motion.div>
   );
 }
+
+
+
 
 
 

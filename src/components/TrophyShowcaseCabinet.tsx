@@ -1,4 +1,4 @@
-import clsx from 'clsx';
+﻿import clsx from 'clsx';
 import { Trophy } from 'lucide-react';
 
 import type { Language, ShowcaseSlot, Theme, Trophy as TrophyType } from '../types';
@@ -21,7 +21,7 @@ const copy = {
     hint: 'Tap to place a trophy',
   },
   zh: {
-    empty: '空展示位',
+    empty: '空位',
     hint: '点击放入奖杯',
   },
 } as const;
@@ -133,3 +133,4 @@ export default function TrophyShowcaseCabinet({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   Check as CheckIcon,
@@ -59,21 +59,21 @@ const adminCopy = {
     openBackpack: 'Open Backpack',
   },
   zh: {
-    title: 'Admin Control',
-    subtitle: 'Root data is now test-only and excluded from rankings. Reset clears a player back to a clean account state and revokes active sessions.',
-    searchPlaceholder: 'Search players to reset...',
-    noUsers: 'No other players found.',
-    resetAction: 'Reset User',
-    deleteAction: 'Delete User',
-    resetConfirm: 'Reset this player? Their stats, coins, inventory, sessions, and match records will be cleared.',
-    deleteConfirm: 'Delete this user completely? This removes the account, sessions, and related match records.',
-    resetSuccess: 'Player data was cleared.',
-    deleteSuccess: 'User account was deleted.',
-    resetFailed: 'Could not reset this player.',
-    deleteFailed: 'Could not delete this user.',
-    rootBadge: 'Root Admin',
-    openShop: 'Open Shop',
-    openBackpack: 'Open Backpack',
+    title: '管理员控制台',
+    subtitle: 'Root 数据仅用于测试，不参与排行榜。重置会把该用户恢复到干净账号状态，并清除活跃会话。',
+    searchPlaceholder: '搜索需要重置的球员...',
+    noUsers: '没有找到其他球员。',
+    resetAction: '重置用户',
+    deleteAction: '删除用户',
+    resetConfirm: '确认重置这个球员吗？他的统计、金币、库存、会话和比赛记录都会被清除。',
+    deleteConfirm: '确认彻底删除这个用户吗？这会移除账号、会话和相关比赛记录。',
+    resetSuccess: '球员数据已清除。',
+    deleteSuccess: '用户账号已删除。',
+    resetFailed: '重置这个球员失败。',
+    deleteFailed: '删除这个用户失败。',
+    rootBadge: 'Root 管理员',
+    openShop: '打开商店',
+    openBackpack: '打开背包',
   },
 } as const;
 
@@ -446,7 +446,7 @@ export default function Profile() {
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
           <div className="mb-4 flex items-center gap-2 text-emerald-500">
             <Star className="w-4 h-4 fill-current" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')} · {sportLabel}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')} 路 {sportLabel}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {currentStats.casualStars} <span className="text-sm font-medium text-zinc-500">{t('profile.stars')}</span>
@@ -469,7 +469,7 @@ export default function Profile() {
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
           <div className="flex items-center gap-2 text-amber-500 mb-4">
             <Activity className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.rankedStats')} · {sportLabel}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.rankedStats')} 路 {sportLabel}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {currentStats.rankedPoints} <span className="text-sm font-medium text-zinc-500">{t('profile.points')}</span>
@@ -752,6 +752,7 @@ export default function Profile() {
     </div>
   );
 }
+
 
 
 

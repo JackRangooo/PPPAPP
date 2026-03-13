@@ -22,7 +22,7 @@ const stageHeadings = {
     semifinal: '半决赛',
     final: '决赛',
     thirdPlace: '季军赛',
-    feedHint: '两场半决赛败者会在这里争夺季军。',
+    feedHint: '两场半决赛的败者会在这里争夺季军。',
   },
 } as const;
 
@@ -129,12 +129,7 @@ const localizeLegacyMatchLabel = (language: Language, label: string) => {
 
   const quarterMatch = label.match(/^(Quarterfinal|Qualifier|Play-In)\s+(\d+)$/);
   if (quarterMatch) {
-    const stageText =
-      quarterMatch[1] === 'Quarterfinal'
-        ? '四分之一决赛'
-        : quarterMatch[1] === 'Play-In'
-          ? '附加赛'
-          : '资格赛';
+    const stageText = quarterMatch[1] === 'Quarterfinal' ? '四分之一决赛' : '资格赛';
     return `${stageText} ${quarterMatch[2]}`;
   }
 
@@ -189,7 +184,7 @@ const compactPlayerName = (name: string, maxLength = 8) => {
     return name;
   }
 
-  return `${name.slice(0, maxLength - 1)}…`;
+  return `${name.slice(0, maxLength - 1)}...`;
 };
 
 const getPlayerIdentity = (
@@ -516,4 +511,7 @@ export default function TournamentBracket({
     </div>
   );
 }
+
+
+
 

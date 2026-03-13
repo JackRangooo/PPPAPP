@@ -1,19 +1,19 @@
-import type { Language } from '../types';
+﻿import type { Language } from '../types';
 
 export const STAR_SHIELD_CAP = 10;
 
 const DIVISIONS = [
-  { minStars: 0, title: { en: 'Onyx Cadet', zh: 'Onyx Cadet' } },
-  { minStars: 10, title: { en: 'Emerald Vanguard', zh: 'Emerald Vanguard' } },
-  { minStars: 20, title: { en: 'Azure Marshal', zh: 'Azure Marshal' } },
-  { minStars: 30, title: { en: 'Solar Regent', zh: 'Solar Regent' } },
-  { minStars: 40, title: { en: 'Crimson Axiom', zh: 'Crimson Axiom' } },
-  { minStars: 50, title: { en: 'Celestial Lancer', zh: 'Celestial Lancer' } },
-  { minStars: 60, title: { en: 'Imperium Prime', zh: 'Imperium Prime' } },
-  { minStars: 70, title: { en: 'Mythic Paragon', zh: 'Mythic Paragon' } },
-  { minStars: 80, title: { en: 'Astral Sovereign', zh: 'Astral Sovereign' } },
-  { minStars: 90, title: { en: 'Eternal Crown', zh: 'Eternal Crown' } },
-  { minStars: 100, title: { en: 'Transcendent Apex', zh: 'Transcendent Apex' } },
+  { minStars: 0, title: { en: 'Onyx Cadet', zh: '黑曜新锋' } },
+  { minStars: 10, title: { en: 'Emerald Vanguard', zh: '翡翠先驱' } },
+  { minStars: 20, title: { en: 'Azure Marshal', zh: '苍穹执锋' } },
+  { minStars: 30, title: { en: 'Solar Regent', zh: '曜日统领' } },
+  { minStars: 40, title: { en: 'Crimson Axiom', zh: '绯焰法则' } },
+  { minStars: 50, title: { en: 'Celestial Lancer', zh: '天穹枪骑' } },
+  { minStars: 60, title: { en: 'Imperium Prime', zh: '帝阙首席' } },
+  { minStars: 70, title: { en: 'Mythic Paragon', zh: '神话圣裁' } },
+  { minStars: 80, title: { en: 'Astral Sovereign', zh: '星穹君临' } },
+  { minStars: 90, title: { en: 'Eternal Crown', zh: '永恒冠冕' } },
+  { minStars: 100, title: { en: 'Transcendent Apex', zh: '超越之巅' } },
 ] as const;
 
 export interface CompetitiveDivision {

@@ -1,4 +1,4 @@
-import { Crown, Medal, Trophy } from 'lucide-react';
+﻿import { Crown, Medal, Trophy } from 'lucide-react';
 import clsx from 'clsx';
 
 import type { Language, Theme } from '../types';
@@ -35,12 +35,12 @@ const copy = {
     matchesPlayed: 'matches',
   },
   zh: {
-    title: 'Podium',
-    champion: 'Champion',
-    runnerUp: 'Runner-up',
-    thirdPlace: 'Third Place',
-    others: 'Other Finishers',
-    matchesPlayed: 'matches',
+    title: '领奖台',
+    champion: '冠军',
+    runnerUp: '亚军',
+    thirdPlace: '季军',
+    others: '其他选手',
+    matchesPlayed: '场',
   },
 } as const;
 
@@ -194,3 +194,4 @@ export default function TournamentPodium({
     </div>
   );
 }
+
