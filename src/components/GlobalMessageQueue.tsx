@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Check,
@@ -102,39 +102,39 @@ const copy = {
     bracketPending: 'Your slot is locked in. Waiting for the previous match to decide your opponent.',
   },
   zh: {
-    title: 'æ¶ˆæ¯é˜Ÿåˆ—',
-    subtitle: 'æ— è®ºåœ¨å“ªä¸ªé¡µé¢ï¼Œéƒ½å¯ä»¥åœ¨è¿™é‡Œå¤„ç†æ¯”èµ›æ¶ˆæ¯ã€‚',
-    empty: 'å½“å‰æ²¡æœ‰å¾…å¤„ç†çš„æ¯”èµ›æ¶ˆæ¯ã€‚',
-    casual: 'æŽ’ä½èµ›',
-    tournament: 'èŒä¸šèµ›',
-    accept: 'æŽ¥å—',
-    decline: 'æ‹’ç»',
-    cancel: 'å–æ¶ˆ',
-    ready: 'æˆ‘å·²å°±ç»ª',
-    submit: 'æäº¤æ¯”åˆ†',
-    resubmit: 'é‡æ–°æäº¤æ¯”åˆ†',
-    submitted: 'å·²æäº¤',
-    scoreEditable: 'ä½ å·²ç»æäº¤è¿‡æ¯”åˆ†ï¼Œä½†åœ¨å¯¹æ‰‹ç¡®è®¤å‰ä»ç„¶å¯ä»¥ä¿®æ”¹å¹¶é‡æ–°æäº¤ã€‚',
-    waitingForOpponent: 'ç­‰å¾…å¯¹æ‰‹å¤„ç†ã€‚',
-    waitingForReady: 'ä½ å·²å°±ç»ªï¼Œç­‰å¾…å¯¹æ‰‹ç¡®è®¤ã€‚',
-    opponentSubmitted: 'å¯¹æ‰‹å·²ç»æäº¤äº†ç»“æžœã€‚',
-    enterScores: 'è¯·è¾“å…¥æœ€ç»ˆæ¯”åˆ†ï¼Œä¸èƒ½å¹³å±€ã€‚',
-    yourScore: 'ä½ ',
-    theirScore: 'å¯¹æ‰‹',
-    open: 'æ¶ˆæ¯',
-    challengerWaiting: 'æŒ‘æˆ˜å·²å‘å‡º',
-    challengerIncoming: 'æ”¶åˆ°æŒ‘æˆ˜',
-    tournamentReady: 'èŒä¸šèµ›å¾…å°±ç»ª',
-    tournamentLive: 'èŒä¸šèµ›å¾…æäº¤æ¯”åˆ†',
-    tournamentWaiting: 'èŒä¸šèµ›å¾…è¡¥å…¨å¯¹æ‰‹',
-    scoreMismatch: 'åŒæ–¹æäº¤ç»“æžœä¸ä¸€è‡´ï¼Œæ¯”åˆ†å·²é‡ç½®ã€‚',
-    scoreSubmitted: 'æ¯”åˆ†å·²æäº¤ï¼Œç­‰å¾…å¯¹æ‰‹ç¡®è®¤ã€‚',
-    scoreCompleted: 'ç»“æžœå·²ç¡®è®¤ã€‚',
-    actionFailed: 'æ“ä½œå¤±è´¥ã€‚',
-    tournamentReadyDone: 'ä½ å·²å°±ç»ªï¼Œç­‰å¾…å¯¹æ‰‹ç¡®è®¤ã€‚',
-    tournamentReadyLive: 'åŒæ–¹éƒ½å·²å°±ç»ªï¼Œå¯ä»¥æäº¤æœ€ç»ˆæ¯”åˆ†äº†ã€‚',
-    opponentPending: 'å¯¹æ‰‹å¾…å®š',
-    bracketPending: 'ä½ çš„ç­¾ä½å·²ç»ç¡®å®šï¼Œæ­£åœ¨ç­‰å¾…ä¸Šä¸€åœºæ¯”èµ›å†³å‡ºå¯¹æ‰‹ã€‚',
+    title: 'ÏûÏ¢¶ÓÁÐ',
+    subtitle: 'ÎÞÂÛÔÚÄÄ¸öÒ³Ãæ£¬¶¼¿ÉÒÔÔÚÕâÀï´¦Àí±ÈÈüÏûÏ¢¡£',
+    empty: 'µ±Ç°Ã»ÓÐ´ý´¦ÀíµÄ±ÈÈüÏûÏ¢¡£',
+    casual: 'ÅÅÎ»Èü',
+    tournament: 'Ö°ÒµÈü',
+    accept: '½ÓÊÜ',
+    decline: '¾Ü¾ø',
+    cancel: 'È¡Ïû',
+    ready: 'ÎÒÒÑ¾ÍÐ÷',
+    submit: 'Ìá½»±È·Ö',
+    resubmit: 'ÖØÐÂÌá½»±È·Ö',
+    submitted: 'ÒÑÌá½»',
+    scoreEditable: 'ÄãÒÑ¾­Ìá½»¹ý±È·Ö£¬µ«ÔÚ¶ÔÊÖÈ·ÈÏÇ°ÈÔÈ»¿ÉÒÔÐÞ¸Ä²¢ÖØÐÂÌá½»¡£',
+    waitingForOpponent: 'µÈ´ý¶ÔÊÖ´¦Àí¡£',
+    waitingForReady: 'ÄãÒÑ¾ÍÐ÷£¬µÈ´ý¶ÔÊÖÈ·ÈÏ¡£',
+    opponentSubmitted: '¶ÔÊÖÒÑ¾­Ìá½»ÁË½á¹û¡£',
+    enterScores: 'ÇëÊäÈë×îÖÕ±È·Ö£¬²»ÄÜÆ½¾Ö¡£',
+    yourScore: 'Äã',
+    theirScore: '¶ÔÊÖ',
+    open: 'ÏûÏ¢',
+    challengerWaiting: 'ÌôÕ½ÒÑ·¢³ö',
+    challengerIncoming: 'ÊÕµ½ÌôÕ½',
+    tournamentReady: 'Ö°ÒµÈü´ý¾ÍÐ÷',
+    tournamentLive: 'Ö°ÒµÈü´ýÌá½»±È·Ö',
+    tournamentWaiting: 'Ö°ÒµÈü´ý²¹È«¶ÔÊÖ',
+    scoreMismatch: 'Ë«·½Ìá½»½á¹û²»Ò»ÖÂ£¬±È·ÖÒÑÖØÖÃ¡£',
+    scoreSubmitted: '±È·ÖÒÑÌá½»£¬µÈ´ý¶ÔÊÖÈ·ÈÏ¡£',
+    scoreCompleted: '½á¹ûÒÑÈ·ÈÏ¡£',
+    actionFailed: '²Ù×÷Ê§°Ü¡£',
+    tournamentReadyDone: 'ÄãÒÑ¾ÍÐ÷£¬µÈ´ý¶ÔÊÖÈ·ÈÏ¡£',
+    tournamentReadyLive: 'Ë«·½¶¼ÒÑ¾ÍÐ÷£¬¿ÉÒÔÌá½»×îÖÕ±È·ÖÁË¡£',
+    opponentPending: '¶ÔÊÖ´ý¶¨',
+    bracketPending: 'ÄãµÄÇ©Î»ÒÑ¾­È·¶¨£¬ÕýÔÚµÈ´ýÉÏÒ»³¡±ÈÈü¾ö³ö¶ÔÊÖ¡£',
   },
 } as const;
 
@@ -187,27 +187,27 @@ const localizeLegacyMatchLabel = (language: Language, label: string) => {
   }
 
   if (label === 'Grand Final') {
-    return 'å†³èµ›';
+    return '¾öÈü';
   }
 
   if (label === 'Third Place Match') {
-    return 'å­£å†›èµ›';
+    return '¼¾¾üÈü';
   }
 
   const quarterMatch = label.match(/^(Quarterfinal|Qualifier|Play-In)\s+(\d+)$/);
   if (quarterMatch) {
     const stageText =
       quarterMatch[1] === 'Quarterfinal'
-        ? 'å››åˆ†ä¹‹ä¸€å†³èµ›'
+        ? 'ËÄ·ÖÖ®Ò»¾öÈü'
         : quarterMatch[1] === 'Play-In'
-          ? 'é™„åŠ èµ›'
-          : 'èµ„æ ¼èµ›';
+          ? '¸½¼ÓÈü'
+          : '×Ê¸ñÈü';
     return `${stageText} ${quarterMatch[2]}`;
   }
 
   const semifinalMatch = label.match(/^Semifinal\s+(\d+)$/);
   if (semifinalMatch) {
-    return `åŠå†³èµ› ${semifinalMatch[1]}`;
+    return `°ë¾öÈü ${semifinalMatch[1]}`;
   }
 
   return label;
@@ -224,12 +224,12 @@ const localizeBracketSource = (language: Language, source: string | null) => {
 
   const winnerMatch = source.match(/^Winner of (.+)$/);
   if (winnerMatch) {
-    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}èƒœè€…`;
+    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}Ê¤Õß`;
   }
 
   const loserMatch = source.match(/^Loser of (.+)$/);
   if (loserMatch) {
-    return `${localizeLegacyMatchLabel(language, loserMatch[1])}è´¥è€…`;
+    return `${localizeLegacyMatchLabel(language, loserMatch[1])}°ÜÕß`;
   }
 
   return localizeLegacyMatchLabel(language, source);
@@ -237,18 +237,18 @@ const localizeBracketSource = (language: Language, source: string | null) => {
 
 const getLocalizedMatchLabel = (language: Language, match: TournamentBracketMatch) => {
   if (match.stage === 'final') {
-    return language === 'zh' ? 'å†³èµ›' : 'Grand Final';
+    return language === 'zh' ? '¾öÈü' : 'Grand Final';
   }
 
   if (match.stage === 'third_place') {
-    return language === 'zh' ? 'å­£å†›èµ›' : 'Third Place Match';
+    return language === 'zh' ? '¼¾¾üÈü' : 'Third Place Match';
   }
 
   if (match.stage === 'semifinal') {
-    return language === 'zh' ? `åŠå†³èµ› ${match.slot}` : `Semifinal ${match.slot}`;
+    return language === 'zh' ? `°ë¾öÈü ${match.slot}` : `Semifinal ${match.slot}`;
   }
 
-  return language === 'zh' ? `èµ„æ ¼èµ› ${match.slot}` : `Qualifier ${match.slot}`;
+  return language === 'zh' ? `×Ê¸ñÈü ${match.slot}` : `Qualifier ${match.slot}`;
 };
 
 const buildCasualQueueItem = (match: Match, userId: string, ui: typeof copy.en): QueueItem => {
@@ -309,7 +309,7 @@ const buildTournamentQueueItem = (
     kind: 'tournament',
     tournament,
     match,
-    title: `${tournament.name} Â· ${matchLabel}`,
+    title: `${tournament.name} ¡¤ ${matchLabel}`,
     subtitle,
     avatarUrl:
       opponentAvatarUrl ||
@@ -323,7 +323,7 @@ const buildTournamentQueueItem = (
 };
 
 export default function GlobalMessageQueue() {
-  const { userProfile, theme, language } = useAuth();
+  const { userProfile, theme, language, sport } = useAuth();
   const location = useLocation();
   const ui = copy[language];
   const tones = bubbleTheme[theme];
@@ -353,8 +353,8 @@ export default function GlobalMessageQueue() {
 
       try {
         const [nextMatches, nextTournaments] = await Promise.all([
-          listUserActiveCasualMatches(userProfile.uid),
-          listTournaments(),
+          listUserActiveCasualMatches(userProfile.uid, sport),
+          listTournaments(sport),
         ]);
         if (!active) {
           return;
@@ -392,7 +392,7 @@ export default function GlobalMessageQueue() {
       window.removeEventListener('focus', refreshSoon);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [userProfile]);
+  }, [sport, userProfile]);
 
   const queueItems = useMemo(() => {
     if (!userProfile) {
@@ -924,5 +924,6 @@ export default function GlobalMessageQueue() {
     </>
   );
 }
+
 
 

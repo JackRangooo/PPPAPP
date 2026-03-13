@@ -1,5 +1,6 @@
 ﻿export type Language = 'en' | 'zh';
 export type Theme = 'dark' | 'light';
+export type Sport = 'table_tennis' | 'badminton';
 export type MatchStatus =
   | 'pending'
   | 'accepted'
@@ -19,6 +20,19 @@ export type TournamentMatchStatus =
   | 'completed'
   | 'walkover';
 
+export interface SportStats {
+  casualStars: number;
+  casualWins: number;
+  casualLosses: number;
+  rankedPoints: number;
+  rankedWins: number;
+  rankedLosses: number;
+  averageRank: number;
+  tournamentsPlayed: number;
+}
+
+export type SportStatsMap = Record<Sport, SportStats>;
+
 export interface AppSession {
   token: string;
   userId: string;
@@ -32,6 +46,7 @@ export interface Trophy {
   tournamentName: string;
   rank: number;
   date: string;
+  sport: Sport;
 }
 
 export interface ShowcaseSlot {
@@ -72,6 +87,7 @@ export interface UserProfile {
   rankedLosses: number;
   averageRank: number;
   tournamentsPlayed: number;
+  statsBySport: SportStatsMap;
   coins: number;
   inventory: Inventory;
   showcase: ShowcaseSlot[];
@@ -97,6 +113,7 @@ export interface Match {
   player2Confirmed: boolean;
   status: MatchStatus;
   type: MatchType;
+  sport: Sport;
   winnerId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -159,6 +176,7 @@ export interface Tournament {
   name: string;
   status: TournamentStatus;
   source: TournamentSource;
+  sport: Sport;
   startDate: string;
   endDate: string;
   participants: string[];

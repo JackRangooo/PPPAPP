@@ -1,4 +1,4 @@
-ï»¿import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import clsx from 'clsx';
@@ -24,17 +24,20 @@ import {
   storeSession,
   updateProfilePreferences,
 } from './lib/api';
-import type { AppSession, Language, Theme, UserProfile } from './types';
+import type { AppSession, Language, Sport, Theme, UserProfile } from './types';
+import { DEFAULT_SPORT, SPORT_STORAGE_KEY, isSport } from './lib/sports';
 
 interface AuthContextType {
   user: AppSession | null;
   userProfile: UserProfile | null;
   loading: boolean;
   booting: boolean;
+  sport: Sport;
   theme: Theme;
   language: Language;
   toggleTheme: () => Promise<void>;
   setLanguage: (lang: Language) => Promise<void>;
+  setSport: (sport: Sport) => void;
   syncProfile: (profile: UserProfile) => void;
   signIn: (nickname: string, password: string) => Promise<void>;
   signUp: (nickname: string, password: string) => Promise<void>;
@@ -54,6 +57,19 @@ const applyThemeToDocument = (theme: Theme) => {
 const applyLanguageToDocument = (language: Language) => {
   document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
   document.documentElement.dataset.language = language;
+};
+
+const applySportToDocument = (sport: Sport) => {
+  document.documentElement.dataset.sport = sport;
+};
+
+const readStoredSport = (): Sport => {
+  if (typeof window === 'undefined') {
+    return DEFAULT_SPORT;
+  }
+
+  const storedSport = window.localStorage.getItem(SPORT_STORAGE_KEY);
+  return isSport(storedSport) ? storedSport : DEFAULT_SPORT;
 };
 
 const applyProfileState = (
@@ -91,6 +107,21 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [booting, setBooting] = useState(true);
   const [theme, setTheme] = useState<Theme>('dark');
   const [language, setLanguageState] = useState<Language>('en');
+  const [sport, setSportState] = useState<Sport>(DEFAULT_SPORT);
+
+  useEffect(() => {
+    const nextSport = readStoredSport();
+    setSportState(nextSport);
+    applySportToDocument(nextSport);
+  }, []);
+
+  useEffect(() => {
+    applySportToDocument(sport);
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SPORT_STORAGE_KEY, sport);
+    }
+  }, [sport]);
 
   useEffect(() => {
     let active = true;
@@ -177,6 +208,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const setSport = (nextSport: Sport) => {
+    setSportState(nextSport);
+  };
+
   const syncProfile = (profile: UserProfile) => {
     applyProfileState(profile, setUserProfile, setTheme, setLanguageState);
   };
@@ -230,8 +265,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         booting,
         theme,
         language,
+        sport,
         toggleTheme,
         setLanguage,
+        setSport,
         syncProfile,
         signIn,
         signUp,
@@ -273,11 +310,11 @@ const MissingProfileState = () => {
           <ShieldAlert className="w-8 h-8" />
         </div>
         <h1 className={clsx('text-2xl font-bold mb-3', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-          {language === 'zh' ? 'èµ„æ–™æš‚æ—¶ä¸å¯ç”¨' : 'Profile unavailable'}
+          {language === 'zh' ? '×ÊÁÏÔİÊ±²»¿ÉÓÃ' : 'Profile unavailable'}
         </h1>
         <p className={clsx('text-sm font-medium mb-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
           {language === 'zh'
-            ? 'æˆ‘ä»¬æš‚æ—¶æ— æ³•æ¢å¤ä½ çš„ç©å®¶èµ„æ–™ã€‚è¯·å…ˆé€€å‡ºç™»å½•ï¼Œå†é‡æ–°ç™»å½•ä»¥é‡æ–°åŒæ­¥è´¦å·ã€‚'
+            ? 'ÎÒÃÇÔİÊ±ÎŞ·¨»Ö¸´ÄãµÄÍæ¼Ò×ÊÁÏ¡£ÇëÏÈÍË³öµÇÂ¼£¬ÔÙÖØĞÂµÇÂ¼ÒÔÖØĞÂÍ¬²½ÕËºÅ¡£'
             : 'We could not restore your player profile. Sign out once and sign back in to resync your account.'}
         </p>
         <button
@@ -286,7 +323,7 @@ const MissingProfileState = () => {
           }}
           className="w-full rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 font-bold transition-colors"
         >
-          {language === 'zh' ? 'è¿”å›ç™»å½•' : 'Back to sign in'}
+          {language === 'zh' ? '·µ»ØµÇÂ¼' : 'Back to sign in'}
         </button>
       </div>
     </div>
@@ -451,3 +488,7 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+
+
+

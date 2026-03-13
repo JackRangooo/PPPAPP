@@ -1,10 +1,11 @@
-﻿import { APP_SESSION_STORAGE_KEY, supabase } from './supabase';
+import { APP_SESSION_STORAGE_KEY, supabase } from './supabase';
 import type {
   AppSession,
   AuthPayload,
   Language,
   Match,
   ShopProduct,
+  Sport,
   SubmitMatchScoreResult,
   Theme,
   Tournament,
@@ -14,6 +15,7 @@ import type {
   TournamentTimelineEvent,
   UserProfile,
 } from '../types';
+import { DEFAULT_SPORT, buildStatsBySport, isSport } from './sports';
 
 const DEFAULT_SHOWCASE = [
   { slotId: 1, trophyId: null },
@@ -64,51 +66,74 @@ const callRpc = async <T>(functionName: string, params?: Record<string, unknown>
   return data as T;
 };
 
-const mapProfile = (row: any): UserProfile => ({
-  uid: row.id,
-  nickname: row.nickname ?? row.display_name ?? 'player',
-  email: row.email ?? '',
-  displayName: row.display_name ?? row.nickname ?? 'Player',
-  photoURL: row.avatar_url ?? '',
-  casualStars: row.casual_stars ?? 0,
-  casualWins: row.casual_wins ?? 0,
-  casualLosses: row.casual_losses ?? 0,
-  rankedPoints: row.ranked_points ?? 0,
-  rankedWins: row.ranked_wins ?? 0,
-  rankedLosses: row.ranked_losses ?? 0,
-  averageRank: row.average_rank ?? 0,
-  tournamentsPlayed: row.tournaments_played ?? 0,
-  coins: row.coins ?? 0,
-  inventory: {
-    trophies: Array.isArray(row.inventory?.trophies) ? row.inventory.trophies : [],
-    titles:
-      Array.isArray(row.inventory?.titles) && row.inventory.titles.length > 0
-        ? row.inventory.titles
-        : DEFAULT_INVENTORY.titles,
-    items:
-      Array.isArray(row.inventory?.items) && row.inventory.items.length > 0
-        ? row.inventory.items
-            .map((item: any) => ({
-              productId: item.productId ?? item.product_id ?? '',
-              name: item.name ?? item.productId ?? item.product_id ?? 'Item',
-              description: item.description ?? '',
-              kind: item.kind ?? 'card',
-              quantity: Number(item.quantity ?? 0),
-              priceCoins: Number(item.priceCoins ?? item.price_coins ?? 0),
-              effectHint: item.effectHint ?? item.effect_hint ?? '',
-              effectStatus: item.effectStatus ?? item.effect_status ?? 'coming_soon',
-            }))
-            .filter((item: UserProfile['inventory']['items'][number]) => item.productId && item.quantity > 0)
-        : DEFAULT_INVENTORY.items,
-  },
-  showcase: Array.isArray(row.showcase) && row.showcase.length > 0 ? row.showcase : DEFAULT_SHOWCASE,
-  selectedTitle: row.selected_title ?? 'Novice Player',
-  theme: row.theme ?? DEFAULT_THEME,
-  language: row.language ?? DEFAULT_LANGUAGE,
-  isRoot: Boolean(row.is_root),
-  createdAt: row.created_at ?? new Date().toISOString(),
-  updatedAt: row.updated_at ?? row.created_at ?? new Date().toISOString(),
-});
+const mapProfile = (row: any): UserProfile => {
+  const legacyTableTennis = {
+    casualStars: Number(row.casual_stars ?? 0),
+    casualWins: Number(row.casual_wins ?? 0),
+    casualLosses: Number(row.casual_losses ?? 0),
+    rankedPoints: Number(row.ranked_points ?? 0),
+    rankedWins: Number(row.ranked_wins ?? 0),
+    rankedLosses: Number(row.ranked_losses ?? 0),
+    averageRank: Number(row.average_rank ?? 0),
+    tournamentsPlayed: Number(row.tournaments_played ?? 0),
+  };
+
+  const rawTrophies = Array.isArray(row.inventory?.trophies) ? row.inventory.trophies : [];
+
+  return {
+    uid: row.id,
+    nickname: row.nickname ?? row.display_name ?? 'player',
+    email: row.email ?? '',
+    displayName: row.display_name ?? row.nickname ?? 'Player',
+    photoURL: row.avatar_url ?? '',
+    casualStars: legacyTableTennis.casualStars,
+    casualWins: legacyTableTennis.casualWins,
+    casualLosses: legacyTableTennis.casualLosses,
+    rankedPoints: legacyTableTennis.rankedPoints,
+    rankedWins: legacyTableTennis.rankedWins,
+    rankedLosses: legacyTableTennis.rankedLosses,
+    averageRank: legacyTableTennis.averageRank,
+    tournamentsPlayed: legacyTableTennis.tournamentsPlayed,
+    statsBySport: buildStatsBySport(row.stats_by_sport, legacyTableTennis),
+    coins: row.coins ?? 0,
+    inventory: {
+      trophies: rawTrophies.map((trophy: any) => ({
+        id: trophy.id ?? '',
+        name: trophy.name ?? 'Trophy',
+        tournamentName: trophy.tournamentName ?? trophy.tournament_name ?? '',
+        rank: Number(trophy.rank ?? 0),
+        date: trophy.date ?? '',
+        sport: isSport(trophy.sport) ? trophy.sport : DEFAULT_SPORT,
+      })),
+      titles:
+        Array.isArray(row.inventory?.titles) && row.inventory.titles.length > 0
+          ? row.inventory.titles
+          : DEFAULT_INVENTORY.titles,
+      items:
+        Array.isArray(row.inventory?.items) && row.inventory.items.length > 0
+          ? row.inventory.items
+              .map((item: any) => ({
+                productId: item.productId ?? item.product_id ?? '',
+                name: item.name ?? item.productId ?? item.product_id ?? 'Item',
+                description: item.description ?? '',
+                kind: item.kind ?? 'card',
+                quantity: Number(item.quantity ?? 0),
+                priceCoins: Number(item.priceCoins ?? item.price_coins ?? 0),
+                effectHint: item.effectHint ?? item.effect_hint ?? '',
+                effectStatus: item.effectStatus ?? item.effect_status ?? 'coming_soon',
+              }))
+              .filter((item: UserProfile['inventory']['items'][number]) => item.productId && item.quantity > 0)
+          : DEFAULT_INVENTORY.items,
+    },
+    showcase: Array.isArray(row.showcase) && row.showcase.length > 0 ? row.showcase : DEFAULT_SHOWCASE,
+    selectedTitle: row.selected_title ?? 'Novice Player',
+    theme: row.theme ?? DEFAULT_THEME,
+    language: row.language ?? DEFAULT_LANGUAGE,
+    isRoot: Boolean(row.is_root),
+    createdAt: row.created_at ?? new Date().toISOString(),
+    updatedAt: row.updated_at ?? row.created_at ?? new Date().toISOString(),
+  };
+};
 
 const mapMatch = (row: any): Match => ({
   id: row.id,
@@ -124,6 +149,7 @@ const mapMatch = (row: any): Match => ({
   player2Confirmed: Boolean(row.player2_confirmed),
   status: row.status,
   type: row.type,
+  sport: isSport(row.sport) ? row.sport : DEFAULT_SPORT,
   winnerId: row.winner_id,
   createdAt: row.created_at ?? new Date().toISOString(),
   updatedAt: row.updated_at ?? row.created_at ?? new Date().toISOString(),
@@ -174,6 +200,7 @@ const mapTournament = (row: any): Tournament => ({
   name: row.name ?? 'Weekly Championship',
   status: row.status ?? 'registration',
   source: row.source === 'admin' ? 'admin' : 'system',
+  sport: isSport(row.sport) ? row.sport : DEFAULT_SPORT,
   startDate: row.start_date ?? new Date().toISOString(),
   endDate: row.end_date ?? new Date().toISOString(),
   participants: Array.isArray(row.participants) ? row.participants : [],
@@ -388,24 +415,31 @@ export const searchProfiles = async (searchTerm: string, excludeUserId?: string)
   return (data ?? []).map(mapProfile).filter((profile) => profile.uid !== excludeUserId);
 };
 
-export const listLeaderboardProfiles = async () => {
+export const listLeaderboardProfiles = async (sport: Sport = DEFAULT_SPORT) => {
   const data = await callRpc<any[]>('list_leaderboard_profiles', {
     p_session_token: requireSessionToken(),
+    p_sport: sport,
   });
   return (data ?? []).map(mapProfile).filter((profile) => !profile.isRoot);
 };
 
-export const listUserRecentMatches = async (_userId?: string, limit = 8) => {
+export const listUserRecentMatches = async (
+  _userId?: string,
+  limit = 8,
+  sport: Sport | null = DEFAULT_SPORT,
+) => {
   const data = await callRpc<any[]>('list_recent_matches_for_user', {
     p_session_token: requireSessionToken(),
     p_limit: limit,
+    p_sport: sport,
   });
   return (data ?? []).map(mapMatch);
 };
 
-export const listUserActiveCasualMatches = async (_userId?: string) => {
+export const listUserActiveCasualMatches = async (_userId?: string, sport: Sport = DEFAULT_SPORT) => {
   const data = await callRpc<any[]>('list_active_casual_matches_for_user', {
     p_session_token: requireSessionToken(),
+    p_sport: sport,
   });
   return (data ?? []).map(mapMatch);
 };
@@ -418,11 +452,12 @@ export const fetchMatch = async (matchId: string) => {
   return data ? mapMatch(data) : null;
 };
 
-export const createCasualMatch = async (opponentId: string) => {
+export const createCasualMatch = async (opponentId: string, sport: Sport = DEFAULT_SPORT) => {
   const data = await callRpc<any>('create_match_request', {
     p_session_token: requireSessionToken(),
     p_match_type: 'casual',
     p_opponent_id: opponentId,
+    p_sport: sport,
   });
   return mapMatch(data);
 };
@@ -453,18 +488,20 @@ export const submitMatchScore = async (
   return mapSubmitResult(data);
 };
 
-export const listTournaments = async () => {
+export const listTournaments = async (sport: Sport | null = DEFAULT_SPORT) => {
   const data = await callRpc<any[]>('list_tournaments_for_user', {
     p_session_token: requireSessionToken(),
+    p_sport: sport,
   });
   return (data ?? []).map(mapTournament);
 };
 
-export const createTournament = async (name?: string) => {
+export const createTournament = async (name?: string, sport: Sport = DEFAULT_SPORT) => {
   const data = await callRpc<any>('create_tournament', {
     p_session_token: requireSessionToken(),
     p_name: name ?? null,
     p_source: 'admin',
+    p_sport: sport,
   });
   return mapTournament(data);
 };

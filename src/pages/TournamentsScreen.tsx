@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar, ChevronRight, MessageSquare, Shield, Sparkles, Trophy as TrophyIcon, Users } from 'lucide-react';
 import clsx from 'clsx';
@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 import TournamentBracketDialog from '../components/TournamentBracketDialog';
 import { cancelTournament, createTournament, createTournamentMatchComment, endTournament, getReadableErrorMessage, listProfiles, listTournamentMatchComments, listTournaments, registerForTournament, saveTournamentProgress, startTournament } from '../lib/api';
 import { adminResolveTournamentMatchScore, createCompletionTimeline, createTournamentBracket, getFinalizedTournamentState, sortTournamentTimeline } from '../lib/tournamentBracket';
+import { getSportLabel } from '../lib/sports';
 import { buildTournamentPreviewCard, upsertTournament } from '../lib/tournamentPresentation';
 import { subscribeToTable } from '../lib/supabase';
 import type { Tournament, TournamentBracketMatch, TournamentMatchComment, UserProfile } from '../types';
@@ -71,66 +72,66 @@ const copy = {
     cardSummaryOngoing: 'Bracket is live. Open the viewer to track advancement.',
   },
   zh: {
-    hub: 'èŒä¸šèµ›å¤§å…',
-    hubSubtitle: 'ç³»ç»ŸèŒä¸šèµ›å’Œç®¡ç†å‘˜èŒä¸šèµ›å¯ä»¥åŒæ—¶å­˜åœ¨ï¼Œå…ˆé€‰åˆ†åŒºï¼Œå†è¿›å…¥å¯¹åº”èµ›äº‹ã€‚',
-    registrationTab: 'æŠ¥åä¸­',
-    ongoingTab: 'å¼€å±•ä¸­',
-    previewTab: 'æœªå¼€å§‹',
-    registrationHint: 'å½“å‰å¯æŠ¥å',
-    ongoingHint: 'å¯¹é˜µè¿›è¡Œä¸­',
-    previewHint: 'ä¸‹å‘¨é¢„è§ˆ',
-    createTournament: 'å‘å¸ƒç®¡ç†å‘˜èŒä¸šèµ›',
-    createTournamentBlocked: 'å½“å‰å·²ç»æœ‰ç®¡ç†å‘˜èŒä¸šèµ›åœ¨è¿›è¡Œä¸­ã€‚',
-    startTournament: 'ç”Ÿæˆå¯¹é˜µè¡¨',
-    cancelTournament: 'å–æ¶ˆé”¦æ ‡èµ›',
-    forceSettle: 'ç´§æ€¥ç»“ç®—',
-    adminScoreAction: 'ç®¡ç†å‘˜å½•åˆ†',
-    adminScoreTitle: 'ç®¡ç†å‘˜ç›´æ¥ç»“ç®—',
-    adminScoreHint: 'å…ˆåœ¨å¯¹é˜µè¡¨é‡Œé€‰ä¸­æ¯”èµ›ï¼Œå†ç”±ç®¡ç†å‘˜ç›´æ¥å½•å…¥æœ€ç»ˆæ¯”åˆ†ã€‚',
-    adminScoreSubmitLabel: 'å½•å…¥å¹¶ç»“ç®—',
-    noRegistration: 'å½“å‰æ²¡æœ‰æ­£åœ¨æŠ¥åçš„èŒä¸šèµ›ã€‚',
-    noOngoing: 'å½“å‰æ²¡æœ‰æ­£åœ¨è¿›è¡Œçš„èŒä¸šèµ›ã€‚',
-    previewTitle: 'ä¸‹å‘¨èŒä¸šèµ›é¢„è§ˆ',
-    previewDescription: 'è¿™é‡Œä¼šå±•ç¤ºä¸‹ä¸€å‘¨ç³»ç»ŸèŒä¸šèµ›çš„é¢„è§ˆä¿¡æ¯ã€‚',
-    previewBadge: 'é¢„è§ˆ',
-    systemSource: 'ç³»ç»Ÿå‘å¸ƒ',
-    adminSource: 'ç®¡ç†å‘˜å‘å¸ƒ',
-    viewBracket: 'æ‰“å¼€å¯¹é˜µè¡¨',
-    bracketTitle: 'å®æ—¶å¯¹é˜µè¡¨',
-    closeBracket: 'å…³é—­',
-    bracketHint: 'å¯¹é˜µè¡¨ä¼šä¼˜å…ˆæŒ‰æ¨ªå‘é•¿å›¾æ¨¡å¼æŸ¥çœ‹ï¼Œç›´æ¥åœ¨çª—å£å†…æ‹–åŠ¨å³å¯æµè§ˆå®Œæ•´å¯¹é˜µã€‚',
-    rootOnly: 'å‘å¸ƒã€ç”Ÿæˆå¯¹é˜µã€å–æ¶ˆå’Œç´§æ€¥ç»“ç®—éƒ½ç”± root ç®¡ç†å‘˜æ§åˆ¶ã€‚',
-    participants: 'çƒå‘˜',
-    registeredListTitle: 'å·²æŠ¥åçƒå‘˜',
-    matchComments: 'èŒä¸šèµ›è¯„è®º',
-    commentPlaceholder: 'æ¯”èµ›ç»“æŸååœ¨è¿™é‡Œç•™è¨€...',
-    postComment: 'å‘å¸ƒè¯„è®º',
-    noComments: 'è¿˜æ²¡æœ‰è¯„è®ºã€‚',
-    commentsLocked: 'åªæœ‰æ¯”èµ›å®Œæˆåæ‰èƒ½è¯„è®ºã€‚',
-    noBracket: 'æŠ¥åç»“æŸåï¼Œç”±ç®¡ç†å‘˜ç”Ÿæˆæ­£å¼å¯¹é˜µè¡¨ã€‚',
-    tournamentCancelled: 'è¿™åœºèŒä¸šèµ›å·²å–æ¶ˆã€‚',
-    minPlayersHint: 'è‡³å°‘ 4 äººã€æœ€å¤š 8 äººåæ‰èƒ½æ­£å¼å¼€å¯èŒä¸šèµ›ã€‚',
-    registrationClosed: 'æ­£å¼ç”Ÿæˆå¯¹é˜µåå°†åœæ­¢æŠ¥åã€‚',
-    createSuccess: 'èŒä¸šèµ›å·²åˆ›å»ºã€‚',
-    startSuccess: 'å¯¹é˜µè¡¨å·²ç”Ÿæˆã€‚',
-    cancelSuccess: 'èŒä¸šèµ›å·²å–æ¶ˆã€‚',
-    settleSuccess: 'èŒä¸šèµ›å·²å®Œæˆç»“ç®—ã€‚',
-    adminScoreSuccess: 'å·²ä»å¯¹é˜µè¡¨ç›´æ¥ç»“ç®—è¿™åœºæ¯”èµ›ã€‚',
-    commentSuccess: 'è¯„è®ºå·²å‘å¸ƒã€‚',
-    cancelConfirm: 'ç¡®è®¤å–æ¶ˆè¿™åœºèŒä¸šèµ›å—ï¼Ÿæ­¤æ“ä½œæ— æ³•æ’¤é”€ã€‚',
-    startConfirm: 'ç¡®è®¤ç”Ÿæˆå¯¹é˜µè¡¨å¹¶å…³é—­æŠ¥åå—ï¼Ÿ',
-    settleConfirm: 'ç¡®è®¤ç°åœ¨ç´§æ€¥ç»“ç®—è¿™åœºèŒä¸šèµ›å—ï¼Ÿ',
-    noProfileForBracket: 'éƒ¨åˆ†å‚èµ›è€…èµ„æ–™è¿˜æ²¡åŒæ­¥åˆ°å‰ç«¯ï¼Œè¯·åˆ·æ–°åå†è¯•ã€‚',
-    noPreviewCta: 'ç³»ç»ŸèŒä¸šèµ›ä¼šæŒ‰å‘¨è‡ªåŠ¨åˆ·æ–°ã€‚',
-    cardSummaryRegistration: 'æ­£å¼å•è´¥æ·˜æ±°èµ›ï¼ŒåŒ…å«å­£å†›èµ›ã€‚',
-    cardSummaryOngoing: 'å¯¹é˜µå·²ç»å¼€å§‹ï¼Œæ‰“å¼€å¯¹é˜µè¡¨å³å¯æŸ¥çœ‹å®æ—¶æ™‹çº§ã€‚',
+    hub: 'Ö°ÒµÈü´óÌü',
+    hubSubtitle: 'ÏµÍ³Ö°ÒµÈüºÍ¹ÜÀíÔ±Ö°ÒµÈü¿ÉÒÔÍ¬Ê±´æÔÚ£¬ÏÈÑ¡·ÖÇø£¬ÔÙ½øÈë¶ÔÓ¦ÈüÊÂ¡£',
+    registrationTab: '±¨ÃûÖĞ',
+    ongoingTab: '¿ªÕ¹ÖĞ',
+    previewTab: 'Î´¿ªÊ¼',
+    registrationHint: 'µ±Ç°¿É±¨Ãû',
+    ongoingHint: '¶ÔÕó½øĞĞÖĞ',
+    previewHint: 'ÏÂÖÜÔ¤ÀÀ',
+    createTournament: '·¢²¼¹ÜÀíÔ±Ö°ÒµÈü',
+    createTournamentBlocked: 'µ±Ç°ÒÑ¾­ÓĞ¹ÜÀíÔ±Ö°ÒµÈüÔÚ½øĞĞÖĞ¡£',
+    startTournament: 'Éú³É¶ÔÕó±í',
+    cancelTournament: 'È¡Ïû½õ±êÈü',
+    forceSettle: '½ô¼±½áËã',
+    adminScoreAction: '¹ÜÀíÔ±Â¼·Ö',
+    adminScoreTitle: '¹ÜÀíÔ±Ö±½Ó½áËã',
+    adminScoreHint: 'ÏÈÔÚ¶ÔÕó±íÀïÑ¡ÖĞ±ÈÈü£¬ÔÙÓÉ¹ÜÀíÔ±Ö±½ÓÂ¼Èë×îÖÕ±È·Ö¡£',
+    adminScoreSubmitLabel: 'Â¼Èë²¢½áËã',
+    noRegistration: 'µ±Ç°Ã»ÓĞÕıÔÚ±¨ÃûµÄÖ°ÒµÈü¡£',
+    noOngoing: 'µ±Ç°Ã»ÓĞÕıÔÚ½øĞĞµÄÖ°ÒµÈü¡£',
+    previewTitle: 'ÏÂÖÜÖ°ÒµÈüÔ¤ÀÀ',
+    previewDescription: 'ÕâÀï»áÕ¹Ê¾ÏÂÒ»ÖÜÏµÍ³Ö°ÒµÈüµÄÔ¤ÀÀĞÅÏ¢¡£',
+    previewBadge: 'Ô¤ÀÀ',
+    systemSource: 'ÏµÍ³·¢²¼',
+    adminSource: '¹ÜÀíÔ±·¢²¼',
+    viewBracket: '´ò¿ª¶ÔÕó±í',
+    bracketTitle: 'ÊµÊ±¶ÔÕó±í',
+    closeBracket: '¹Ø±Õ',
+    bracketHint: '¶ÔÕó±í»áÓÅÏÈ°´ºáÏò³¤Í¼Ä£Ê½²é¿´£¬Ö±½ÓÔÚ´°¿ÚÄÚÍÏ¶¯¼´¿Éä¯ÀÀÍêÕû¶ÔÕó¡£',
+    rootOnly: '·¢²¼¡¢Éú³É¶ÔÕó¡¢È¡ÏûºÍ½ô¼±½áËã¶¼ÓÉ root ¹ÜÀíÔ±¿ØÖÆ¡£',
+    participants: 'ÇòÔ±',
+    registeredListTitle: 'ÒÑ±¨ÃûÇòÔ±',
+    matchComments: 'Ö°ÒµÈüÆÀÂÛ',
+    commentPlaceholder: '±ÈÈü½áÊøºóÔÚÕâÀïÁôÑÔ...',
+    postComment: '·¢²¼ÆÀÂÛ',
+    noComments: '»¹Ã»ÓĞÆÀÂÛ¡£',
+    commentsLocked: 'Ö»ÓĞ±ÈÈüÍê³Éºó²ÅÄÜÆÀÂÛ¡£',
+    noBracket: '±¨Ãû½áÊøºó£¬ÓÉ¹ÜÀíÔ±Éú³ÉÕıÊ½¶ÔÕó±í¡£',
+    tournamentCancelled: 'Õâ³¡Ö°ÒµÈüÒÑÈ¡Ïû¡£',
+    minPlayersHint: 'ÖÁÉÙ 4 ÈË¡¢×î¶à 8 ÈËºó²ÅÄÜÕıÊ½¿ªÆôÖ°ÒµÈü¡£',
+    registrationClosed: 'ÕıÊ½Éú³É¶ÔÕóºó½«Í£Ö¹±¨Ãû¡£',
+    createSuccess: 'Ö°ÒµÈüÒÑ´´½¨¡£',
+    startSuccess: '¶ÔÕó±íÒÑÉú³É¡£',
+    cancelSuccess: 'Ö°ÒµÈüÒÑÈ¡Ïû¡£',
+    settleSuccess: 'Ö°ÒµÈüÒÑÍê³É½áËã¡£',
+    adminScoreSuccess: 'ÒÑ´Ó¶ÔÕó±íÖ±½Ó½áËãÕâ³¡±ÈÈü¡£',
+    commentSuccess: 'ÆÀÂÛÒÑ·¢²¼¡£',
+    cancelConfirm: 'È·ÈÏÈ¡ÏûÕâ³¡Ö°ÒµÈüÂğ£¿´Ë²Ù×÷ÎŞ·¨³·Ïú¡£',
+    startConfirm: 'È·ÈÏÉú³É¶ÔÕó±í²¢¹Ø±Õ±¨ÃûÂğ£¿',
+    settleConfirm: 'È·ÈÏÏÖÔÚ½ô¼±½áËãÕâ³¡Ö°ÒµÈüÂğ£¿',
+    noProfileForBracket: '²¿·Ö²ÎÈüÕß×ÊÁÏ»¹Ã»Í¬²½µ½Ç°¶Ë£¬ÇëË¢ĞÂºóÔÙÊÔ¡£',
+    noPreviewCta: 'ÏµÍ³Ö°ÒµÈü»á°´ÖÜ×Ô¶¯Ë¢ĞÂ¡£',
+    cardSummaryRegistration: 'ÕıÊ½µ¥°ÜÌÔÌ­Èü£¬°üº¬¼¾¾üÈü¡£',
+    cardSummaryOngoing: '¶ÔÕóÒÑ¾­¿ªÊ¼£¬´ò¿ª¶ÔÕó±í¼´¿É²é¿´ÊµÊ±½ú¼¶¡£',
   },
 } as const;
 
 const badgeStyles = { system: 'bg-emerald-500/12 text-emerald-500', admin: 'bg-sky-500/12 text-sky-500' } as const;
 
 export default function TournamentsScreen() {
-  const { userProfile, theme, language } = useAuth();
+  const { userProfile, theme, language, sport } = useAuth();
   const t = useTranslation(language);
   const ui = copy[language];
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -147,7 +148,7 @@ export default function TournamentsScreen() {
   useEffect(() => {
     let active = true;
     const refresh = async () => {
-      const [nextTournaments, profiles] = await Promise.all([listTournaments(), listProfiles()]);
+      const [nextTournaments, profiles] = await Promise.all([listTournaments(sport), listProfiles()]);
       if (!active) return;
       const nextProfiles = profiles.reduce<Record<string, UserProfile>>((accumulator, profile) => {
         accumulator[profile.uid] = profile;
@@ -167,14 +168,15 @@ export default function TournamentsScreen() {
       stopTournaments();
       stopProfiles();
     };
-  }, [userProfile]);
+  }, [sport, userProfile]);
 
   const registrationTournaments = useMemo(() => tournaments.filter((tournament) => tournament.status === 'registration'), [tournaments]);
   const ongoingTournaments = useMemo(() => tournaments.filter((tournament) => tournament.status === 'ongoing'), [tournaments]);
   const activeTournaments = useMemo(() => tournaments.filter((tournament) => tournament.status === 'registration' || tournament.status === 'ongoing'), [tournaments]);
   const pastTournaments = useMemo(() => tournaments.filter((tournament) => tournament.status === 'completed' || tournament.status === 'cancelled'), [tournaments]);
   const visibleTournaments = lane === 'registration' ? registrationTournaments : lane === 'ongoing' ? ongoingTournaments : [];
-  const previewCard = useMemo(() => buildTournamentPreviewCard(ui.previewTitle, ui.previewDescription), [ui.previewDescription, ui.previewTitle]);
+  const sportLabel = getSportLabel(sport, language);
+  const previewCard = useMemo(() => buildTournamentPreviewCard(`${ui.previewTitle} ¡¤ ${sportLabel}`, ui.previewDescription), [sportLabel, ui.previewDescription, ui.previewTitle]);
   const featuredTournament = lane === 'preview' ? null : visibleTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? visibleTournaments[0] ?? activeTournaments[0] ?? null;
   const selectedMatch = featuredTournament?.bracket.matches.find((match) => match.id === selectedMatchId) ?? featuredTournament?.bracket.matches.find((match) => userProfile && (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid)) ?? featuredTournament?.bracket.matches[0] ?? null;
   const canManageTournament = Boolean(userProfile?.isRoot);
@@ -250,7 +252,7 @@ export default function TournamentsScreen() {
   };
 
   const handleCreateTournament = async () => runMutation(ui.createTournament, async () => {
-    const created = await createTournament();
+    const created = await createTournament(undefined, sport);
     replaceTournament(created);
     setSelectedTournamentId(created.id);
     setLane(created.status === 'ongoing' ? 'ongoing' : 'registration');
@@ -344,7 +346,7 @@ export default function TournamentsScreen() {
     { id: 'ongoing' as const, label: ui.ongoingTab, hint: ui.ongoingHint, count: ongoingTournaments.length },
     { id: 'preview' as const, label: ui.previewTab, hint: ui.previewHint, count: 1 },
   ];
-  const formatDateLabel = (value: string | Date) => format(new Date(value), language === 'zh' ? 'Mæœˆdæ—¥' : 'MMM d');
+  const formatDateLabel = (value: string | Date) => format(new Date(value), language === 'zh' ? 'MÔÂdÈÕ' : 'MMM d');
 
   const renderTournamentCard = (tournament: Tournament) => {
     const isSelected = featuredTournament?.id === tournament.id;
@@ -405,7 +407,7 @@ export default function TournamentsScreen() {
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500"><Sparkles className="h-4 w-4" />{ui.hub}</div>
-          <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.hub}</h2>
+          <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.hub} ¡¤ {sportLabel}</h2>
           {canManageTournament ? (
             <>
               <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>{ui.hubSubtitle}</p>
@@ -455,7 +457,7 @@ export default function TournamentsScreen() {
                 {selectedMatch && (selectedMatch.status === 'completed' || selectedMatch.status === 'walkover') ? (
                   <div className="space-y-4">
                     <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                      {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'Mæœˆdæ—¥ HH:mm' : 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
+                      {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'MÔÂdÈÕ HH:mm' : 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
                     </div>
                     <div className="space-y-3">
                       <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} placeholder={ui.commentPlaceholder} rows={4} className={clsx('w-full resize-none rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500/30', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400')} />
@@ -478,5 +480,8 @@ export default function TournamentsScreen() {
     </div>
   );
 }
+
+
+
 
 

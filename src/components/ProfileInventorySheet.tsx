@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import TrophyBadge from './TrophyBadge';
-import type { InventoryItem, Language, ShopProduct, Theme, Trophy as TrophyType, UserProfile } from '../types';
+import type { InventoryItem, Language, ShopProduct, Sport, Theme, Trophy as TrophyType, UserProfile } from '../types';
 
 export type InventoryTab = 'trophies' | 'titles' | 'items' | 'shop';
 
@@ -11,6 +11,7 @@ type ProfileInventorySheetProps = {
   open: boolean;
   theme: Theme;
   language: Language;
+  sport: Sport;
   userProfile: UserProfile;
   inventoryTab: InventoryTab;
   busy: boolean;
@@ -44,22 +45,22 @@ const copy = {
     comingSoon: 'Effect coming later',
   },
   zh: {
-    backpack: 'èƒŒåŒ…',
-    trophies: 'å¥–æ¯',
-    titles: 'ç§°å·',
-    items: 'é“å…·',
-    shop: 'å•†åº—',
-    winToEarn: 'èµ¢ä¸‹é”¦æ ‡èµ›å³å¯èŽ·å¾—å¥–æ¯ã€‚',
-    noItems: 'è´­ä¹°åŽçš„æŠ€èƒ½å¡å’Œé“å…·ä¼šæ˜¾ç¤ºåœ¨è¿™é‡Œã€‚',
-    noShopItems: 'å•†åº—é‡Œæš‚æ—¶è¿˜æ²¡æœ‰ä¸Šæž¶å•†å“ã€‚',
-    remove: 'å–ä¸‹',
-    display: 'å±•ç¤º',
-    showcaseFull: 'å±•ç¤ºæŸœå·²æ»¡ï¼Œè¯·å…ˆå–ä¸‹ä¸€ä¸ªå¥–æ¯ã€‚',
-    buy: 'è´­ä¹°',
-    owned: 'æ‹¥æœ‰',
-    coins: 'é‡‘å¸',
-    shopHint: 'å…ˆæŠŠé“å…·ä¹°è¿›èƒŒåŒ…ï¼Œå…·ä½“æ•ˆæžœä¼šåœ¨åŽç»­ç‰ˆæœ¬æŽ¥å…¥ã€‚',
-    comingSoon: 'æ•ˆæžœåŽç»­å¼€æ”¾',
+    backpack: '±³°ü',
+    trophies: '½±±­',
+    titles: '³ÆºÅ',
+    items: 'µÀ¾ß',
+    shop: 'ÉÌµê',
+    winToEarn: 'Ó®ÏÂ½õ±êÈü¼´¿É»ñµÃ½±±­¡£',
+    noItems: '¹ºÂòºóµÄ¼¼ÄÜ¿¨ºÍµÀ¾ß»áÏÔÊ¾ÔÚÕâÀï¡£',
+    noShopItems: 'ÉÌµêÀïÔÝÊ±»¹Ã»ÓÐÉÏ¼ÜÉÌÆ·¡£',
+    remove: 'È¡ÏÂ',
+    display: 'Õ¹Ê¾',
+    showcaseFull: 'Õ¹Ê¾¹ñÒÑÂú£¬ÇëÏÈÈ¡ÏÂÒ»¸ö½±±­¡£',
+    buy: '¹ºÂò',
+    owned: 'ÓµÓÐ',
+    coins: '½ð±Ò',
+    shopHint: 'ÏÈ°ÑµÀ¾ßÂò½ø±³°ü£¬¾ßÌåÐ§¹û»áÔÚºóÐø°æ±¾½ÓÈë¡£',
+    comingSoon: 'Ð§¹ûºóÐø¿ª·Å',
   },
 } as const;
 
@@ -68,7 +69,7 @@ const kindLabels = {
     card: 'Card',
   },
   zh: {
-    card: 'æŠ€èƒ½å¡',
+    card: '¼¼ÄÜ¿¨',
   },
 } as const;
 
@@ -80,9 +81,9 @@ const productLocalization = {
       effectHint: 'Future: choose a first-round opponent',
     },
     zh: {
-      name: 'è‡ªé€‰å¡',
-      description: 'æœªæ¥å¯åœ¨é”¦æ ‡èµ›ä¸­æŒ‡å®šç¬¬ä¸€è½®å¯¹æ‰‹ã€‚å½“å‰ç‰ˆæœ¬ä»…æ”¯æŒè´­ä¹°å’Œå…¥åº“ï¼Œæ•ˆæžœæš‚æœªå¼€æ”¾ã€‚',
-      effectHint: 'æœªæ¥å¯æŒ‡å®šç¬¬ä¸€è½®å¯¹æ‰‹',
+      name: '×ÔÑ¡¿¨',
+      description: 'Î´À´¿ÉÔÚ½õ±êÈüÖÐÖ¸¶¨µÚÒ»ÂÖ¶ÔÊÖ¡£µ±Ç°°æ±¾½öÖ§³Ö¹ºÂòºÍÈë¿â£¬Ð§¹ûÔÝÎ´¿ª·Å¡£',
+      effectHint: 'Î´À´¿ÉÖ¸¶¨µÚÒ»ÂÖ¶ÔÊÖ',
     },
   },
 } as const;
@@ -110,6 +111,7 @@ export default function ProfileInventorySheet({
   open,
   theme,
   language,
+  sport,
   userProfile,
   inventoryTab,
   busy,
@@ -123,7 +125,8 @@ export default function ProfileInventorySheet({
   onPurchase,
 }: ProfileInventorySheetProps) {
   const ui = copy[language];
-  const priceUnit = language === 'zh' ? 'é‡‘å¸' : 'coins';
+  const visibleTrophies = (userProfile.inventory?.trophies || []).filter((trophy) => trophy.sport === sport);
+  const priceUnit = language === 'zh' ? '½ð±Ò' : 'coins';
 
   return (
     <AnimatePresence>
@@ -189,7 +192,7 @@ export default function ProfileInventorySheet({
             <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             {inventoryTab === 'trophies' ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {(userProfile.inventory?.trophies || []).map((currentTrophy) => (
+                {visibleTrophies.map((currentTrophy) => (
                   <div
                     key={currentTrophy.id}
                     className={clsx(
@@ -239,7 +242,7 @@ export default function ProfileInventorySheet({
                   </div>
                 ))}
 
-                {(!userProfile.inventory?.trophies || userProfile.inventory.trophies.length === 0) ? (
+                {visibleTrophies.length === 0 ? (
                   <div className="col-span-full py-12 text-center text-zinc-500 font-medium">{ui.winToEarn}</div>
                 ) : null}
               </div>
@@ -393,3 +396,9 @@ export default function ProfileInventorySheet({
     </AnimatePresence>
   );
 }
+
+
+
+
+
+

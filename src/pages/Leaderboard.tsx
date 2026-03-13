@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, Award, Medal, Star, Trophy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -6,8 +6,10 @@ import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import CompetitiveDivisionBadge from '../components/CompetitiveDivisionBadge';
+import SportToggle from '../components/SportToggle';
 import { listLeaderboardProfiles } from '../lib/api';
 import { getCompetitiveDivision } from '../lib/competitiveRank';
+import { getSportLabel, getSportStats } from '../lib/sports';
 import { subscribeToTable } from '../lib/supabase';
 import type { UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -15,50 +17,66 @@ import { useTranslation } from '../i18n';
 type SortOption = 'stars' | 'points' | 'winrate';
 
 export default function Leaderboard() {
-  const { userProfile, theme, language } = useAuth();
+  const { userProfile, theme, language, sport, setSport } = useAuth();
   const t = useTranslation(language);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('stars');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     const loadUsers = async () => {
       try {
-        setUsers(await listLeaderboardProfiles());
+        const nextUsers = await listLeaderboardProfiles(sport);
+        if (active) {
+          setUsers(nextUsers);
+        }
       } catch (error) {
         console.error('Failed to load leaderboard', error);
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
 
+    setLoading(true);
     void loadUsers();
+
     return subscribeToTable('profiles', () => {
       void loadUsers();
     });
-  }, []);
+  }, [sport]);
 
-  const leaderboardUsers = users.map((currentUser) => {
-    const totalGames = currentUser.casualWins + currentUser.casualLosses;
-    const winRate = totalGames > 0 ? Math.round((currentUser.casualWins / totalGames) * 100) : 0;
-    const division = getCompetitiveDivision(currentUser.casualStars, language);
-    return {
-      ...currentUser,
-      totalGames,
-      winRate,
-      division,
-    };
-  });
+  const leaderboardUsers = useMemo(
+    () =>
+      users.map((currentUser) => {
+        const sportStats = getSportStats(currentUser, sport);
+        const totalGames = sportStats.casualWins + sportStats.casualLosses;
+        const winRate = totalGames > 0 ? Math.round((sportStats.casualWins / totalGames) * 100) : 0;
+        const division = getCompetitiveDivision(sportStats.casualStars, language);
+
+        return {
+          ...currentUser,
+          sportStats,
+          totalGames,
+          winRate,
+          division,
+        };
+      }),
+    [language, sport, users],
+  );
 
   const sortedUsers = [...leaderboardUsers].sort((left, right) => {
     if (sortBy === 'stars') {
-      if (right.casualStars === left.casualStars) return right.winRate - left.winRate;
-      return right.casualStars - left.casualStars;
+      if (right.sportStats.casualStars === left.sportStats.casualStars) return right.winRate - left.winRate;
+      return right.sportStats.casualStars - left.sportStats.casualStars;
     }
 
     if (sortBy === 'points') {
-      if (right.rankedPoints === left.rankedPoints) return right.winRate - left.winRate;
-      return right.rankedPoints - left.rankedPoints;
+      if (right.sportStats.rankedPoints === left.sportStats.rankedPoints) return right.winRate - left.winRate;
+      return right.sportStats.rankedPoints - left.sportStats.rankedPoints;
     }
 
     if (right.winRate === left.winRate) return right.totalGames - left.totalGames;
@@ -90,17 +108,15 @@ export default function Leaderboard() {
   };
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return <Medal className={clsx('w-6 h-6', theme === 'dark' ? 'text-yellow-400' : 'text-yellow-500')} />;
-    if (index === 1) return <Medal className={clsx('w-6 h-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-400')} />;
-    if (index === 2) return <Medal className="w-6 h-6 text-amber-600" />;
-    return <span className={clsx('text-lg font-bold w-6 text-center', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{index + 1}</span>;
+    if (index === 0) return <Medal className={clsx('h-6 w-6', theme === 'dark' ? 'text-yellow-400' : 'text-yellow-500')} />;
+    if (index === 1) return <Medal className={clsx('h-6 w-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-400')} />;
+    if (index === 2) return <Medal className="h-6 w-6 text-amber-600" />;
+    return <span className={clsx('w-6 text-center text-lg font-bold', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{index + 1}</span>;
   };
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      <header
-        className="-mx-4 -mt-4 sticky top-0 z-40 pb-4 md:mx-0 md:mt-0"
-      >
+      <header className="-mx-4 -mt-4 sticky top-0 z-40 pb-4 md:mx-0 md:mt-0">
         <div
           className={clsx(
             'relative overflow-hidden border px-4 pb-4 backdrop-blur-[26px] backdrop-saturate-150 md:rounded-[2rem] md:border',
@@ -121,11 +137,14 @@ export default function Leaderboard() {
           />
           <div className="relative">
             <h1 className={clsx('mb-2 flex items-center gap-3 text-3xl font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-              <Award className="h-8 w-8 text-emerald-500" /> {t('nav.leaderboard')}
+              <Award className="h-8 w-8 text-emerald-500" />
+              {t('nav.leaderboard')}
             </h1>
             <p className={clsx('font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
-              {t('leaderboard.subtitle')}
+              {t('leaderboard.subtitle')} ¡¤ {getSportLabel(sport, language)}
             </p>
+
+            <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} className="mt-4" />
 
             <div className={clsx('mt-4 flex rounded-2xl border p-1', theme === 'dark' ? 'border-white/10 bg-zinc-950/55' : 'border-zinc-200 bg-white/80 shadow-sm')}>
               <button
@@ -177,9 +196,9 @@ export default function Leaderboard() {
 
       <div className="space-y-3">
         {loading ? (
-          <div className="text-center py-12 text-zinc-500 font-medium">{t('leaderboard.loading')}</div>
+          <div className="py-12 text-center font-medium text-zinc-500">{t('leaderboard.loading')}</div>
         ) : sortedUsers.length === 0 ? (
-          <div className={clsx('border rounded-2xl p-8 text-center font-medium', theme === 'dark' ? 'bg-zinc-900/30 border-white/5 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-500 shadow-sm')}>
+          <div className={clsx('rounded-2xl border p-8 text-center font-medium', theme === 'dark' ? 'border-white/5 bg-zinc-900/30 text-zinc-500' : 'border-zinc-200 bg-white text-zinc-500 shadow-sm')}>
             {t('leaderboard.empty')}
           </div>
         ) : (
@@ -196,26 +215,26 @@ export default function Leaderboard() {
                   transition={{ duration: 0.3, type: 'spring', bounce: 0.3 }}
                   key={currentUser.uid}
                   className={clsx(
-                    'flex items-center justify-between p-4 rounded-2xl border transition-all',
+                    'flex items-center justify-between rounded-2xl border p-4 transition-all',
                     isMe
                       ? theme === 'dark'
-                        ? 'bg-emerald-500/10 border-emerald-500/30 ring-1 ring-emerald-500/50'
-                        : 'bg-emerald-50 border-emerald-200 ring-1 ring-emerald-300 shadow-sm'
+                        ? 'border-emerald-500/30 bg-emerald-500/10 ring-1 ring-emerald-500/50'
+                        : 'border-emerald-200 bg-emerald-50 ring-1 ring-emerald-300 shadow-sm'
                       : getRankColor(index),
                   )}
                 >
-                  <Link to={`/player/${currentUser.uid}`} className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="flex items-center justify-center w-8">{getRankIcon(index)}</div>
+                  <Link to={`/player/${currentUser.uid}`} className="flex min-w-0 flex-1 items-center gap-4">
+                    <div className="flex w-8 items-center justify-center">{getRankIcon(index)}</div>
                     <img
                       src={currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName)}&background=random`}
                       alt={currentUser.displayName}
-                      className={clsx('w-12 h-12 rounded-full border-2 shrink-0', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}
+                      className={clsx('h-12 w-12 shrink-0 rounded-full border-2 object-cover', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}
                       referrerPolicy="no-referrer"
                     />
                     <div className="min-w-0">
-                      <div className={clsx('font-bold text-lg flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                      <div className={clsx('flex items-center gap-2 text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                         <span className="truncate">{currentUser.displayName}</span>
-                        {isMe ? <span className="text-[10px] bg-emerald-500 text-zinc-950 px-2 py-0.5 rounded-full uppercase tracking-wider">{t('leaderboard.you')}</span> : null}
+                        {isMe ? <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-950">{t('leaderboard.you')}</span> : null}
                       </div>
                       <div className={clsx('text-xs font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
                         {currentUser.totalGames} {t('leaderboard.matchesPlayed')}
@@ -226,7 +245,7 @@ export default function Leaderboard() {
                   <div className="flex shrink-0 flex-col items-end gap-2 text-right">
                     <CompetitiveDivisionBadge
                       division={currentUser.division}
-                      stars={currentUser.casualStars}
+                      stars={currentUser.sportStats.casualStars}
                       starsLabel={t('profile.stars')}
                       theme={theme}
                       size="compact"
@@ -235,12 +254,12 @@ export default function Leaderboard() {
                     />
                     {sortBy === 'points' ? (
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-sm font-black text-amber-500">
-                        {currentUser.rankedPoints} <Trophy className="w-5 h-5" />
+                        {currentUser.sportStats.rankedPoints} <Trophy className="h-5 w-5" />
                       </div>
                     ) : null}
                     {sortBy === 'winrate' ? (
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-sm font-black text-blue-500">
-                        {currentUser.winRate}% <Activity className="w-5 h-5" />
+                        {currentUser.winRate}% <Activity className="h-5 w-5" />
                       </div>
                     ) : null}
                   </div>
@@ -253,4 +272,3 @@ export default function Leaderboard() {
     </motion.div>
   );
 }
-

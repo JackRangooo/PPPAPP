@@ -21,6 +21,7 @@ import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import ProfileIdentityEditor from '../components/ProfileIdentityEditor';
+import SportToggle from '../components/SportToggle';
 import PrizeIcon from '../components/PrizeIcon';
 import ProfileInventorySheet, { type InventoryTab } from '../components/ProfileInventorySheet';
 import TrophyShowcaseCabinet from '../components/TrophyShowcaseCabinet';
@@ -35,6 +36,7 @@ import {
   updateProfilePreferences,
 } from '../lib/api';
 import { getCompetitiveDivision } from '../lib/competitiveRank';
+import { getSportLabel, getSportStats } from '../lib/sports';
 import type { ShopProduct, Trophy as TrophyType, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
@@ -57,26 +59,26 @@ const adminCopy = {
     openBackpack: 'Open Backpack',
   },
   zh: {
-    title: 'ç®¡ç†å‘˜æŽ§åˆ¶å°',
-    subtitle: 'root æ•°æ®çŽ°åœ¨åªç”¨äºŽæµ‹è¯•ï¼Œä¸ä¼šè¿›å…¥æŽ’è¡Œæ¦œã€‚é‡ç½®ä¼šæŠŠçŽ©å®¶æ¢å¤æˆå¹²å‡€è´¦å·ï¼Œå¹¶æ³¨é”€è¯¥ç”¨æˆ·å½“å‰ä¼šè¯ã€‚',
-    searchPlaceholder: 'æœç´¢è¦é‡ç½®çš„çŽ©å®¶...',
-    noUsers: 'æš‚æ—¶æ²¡æœ‰å…¶ä»–çŽ©å®¶ã€‚',
-    resetAction: 'æ¸…é™¤æ•°æ®',
-    deleteAction: 'åˆ é™¤ç”¨æˆ·',
-    resetConfirm: 'ç¡®è®¤é‡ç½®è¿™ä¸ªçŽ©å®¶å—ï¼Ÿä»–çš„ç§¯åˆ†ã€é‡‘å¸ã€èƒŒåŒ…ã€ä¼šè¯å’Œæ¯”èµ›è®°å½•éƒ½ä¼šè¢«æ¸…ç©ºã€‚',
-    deleteConfirm: 'ç¡®è®¤å½»åº•åˆ é™¤è¿™ä¸ªç”¨æˆ·å—ï¼Ÿè´¦å·ã€ä¼šè¯å’Œç›¸å…³æ¯”èµ›è®°å½•éƒ½ä¼šè¢«ç§»é™¤ã€‚',
-    resetSuccess: 'çŽ©å®¶æ•°æ®å·²æ¸…é™¤ã€‚',
-    deleteSuccess: 'ç”¨æˆ·å·²åˆ é™¤ã€‚',
-    resetFailed: 'æ¸…é™¤çŽ©å®¶æ•°æ®å¤±è´¥ã€‚',
-    deleteFailed: 'åˆ é™¤ç”¨æˆ·å¤±è´¥ã€‚',
-    rootBadge: 'Root ç®¡ç†å‘˜',
-    openShop: 'æ‰“å¼€å•†åº—',
-    openBackpack: 'æ‰“å¼€èƒŒåŒ…',
+    title: '¹ÜÀíÔ±¿ØÖÆÌ¨',
+    subtitle: 'root Êý¾Ý½öÓÃÓÚ²âÊÔ£¬²»»á½øÈëÅÅÐÐ°ñ¡£ÖØÖÃ»á°ÑÍæ¼Ò»Ö¸´³É¸É¾»ÕËºÅ×´Ì¬£¬²¢³·Ïúµ±Ç°»á»°¡£',
+    searchPlaceholder: 'ËÑË÷ÒªÖØÖÃµÄÍæ¼Ò...',
+    noUsers: 'ÔÝÊ±Ã»ÓÐÆäËûÍæ¼Ò¡£',
+    resetAction: 'Çå³ýÊý¾Ý',
+    deleteAction: 'É¾³ýÓÃ»§',
+    resetConfirm: 'È·ÈÏÖØÖÃÕâ¸öÍæ¼ÒÂð£¿ËûµÄ»ý·Ö¡¢½ð±Ò¡¢±³°ü¡¢»á»°ºÍ±ÈÈü¼ÇÂ¼¶¼»á±»Çå¿Õ¡£',
+    deleteConfirm: 'È·ÈÏ³¹µ×É¾³ýÕâ¸öÓÃ»§Âð£¿ÕËºÅ¡¢»á»°ºÍÏà¹Ø±ÈÈü¼ÇÂ¼¶¼»á±»ÒÆ³ý¡£',
+    resetSuccess: 'Íæ¼ÒÊý¾ÝÒÑÇå³ý¡£',
+    deleteSuccess: 'ÓÃ»§ÒÑÉ¾³ý¡£',
+    resetFailed: 'Çå³ýÍæ¼ÒÊý¾ÝÊ§°Ü¡£',
+    deleteFailed: 'É¾³ýÓÃ»§Ê§°Ü¡£',
+    rootBadge: 'Root ¹ÜÀíÔ±',
+    openShop: '´ò¿ªÉÌµê',
+    openBackpack: '´ò¿ª±³°ü',
   },
 } as const;
 
 export default function Profile() {
-  const { userProfile, logOut, theme, toggleTheme, language, setLanguage, syncProfile } = useAuth();
+  const { userProfile, logOut, theme, toggleTheme, language, setLanguage, syncProfile, sport, setSport } = useAuth();
   const t = useTranslation(language);
   const adminUi = adminCopy[language];
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -298,11 +300,14 @@ export default function Profile() {
     }
   };
 
+  const sportLabel = getSportLabel(sport, language);
+  const currentStats = getSportStats(userProfile, sport);
+  const visibleTrophies = (userProfile.inventory?.trophies || []).filter((trophy) => trophy.sport === sport);
   const casualWinRate =
-    userProfile.casualWins + userProfile.casualLosses > 0
-      ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
+    currentStats.casualWins + currentStats.casualLosses > 0
+      ? Math.round((currentStats.casualWins / (currentStats.casualWins + currentStats.casualLosses)) * 100)
       : 0;
-  const division = getCompetitiveDivision(userProfile.casualStars, language);
+  const division = getCompetitiveDivision(currentStats.casualStars, language);
 
   return (
     <div className="space-y-8 pb-12">
@@ -397,6 +402,8 @@ export default function Profile() {
         </button>
       </header>
 
+      <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} />
+
       <section className="relative">
         <div className="flex items-center justify-between mb-4 gap-3">
           <h2 className={clsx('text-lg font-bold flex items-center gap-2', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
@@ -429,7 +436,7 @@ export default function Profile() {
           language={language}
           theme={theme}
           slots={userProfile.showcase || []}
-          trophies={userProfile.inventory?.trophies || []}
+          trophies={visibleTrophies}
           onSelectTrophy={setSelectedTrophy}
           onEmptySlotClick={() => setIsInventoryOpen(true)}
         />
@@ -439,16 +446,16 @@ export default function Profile() {
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
           <div className="mb-4 flex items-center gap-2 text-emerald-500">
             <Star className="w-4 h-4 fill-current" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')} ¡¤ {sportLabel}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            {userProfile.casualStars} <span className="text-sm font-medium text-zinc-500">{t('profile.stars')}</span>
+            {currentStats.casualStars} <span className="text-sm font-medium text-zinc-500">{t('profile.stars')}</span>
           </div>
           <div className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-amber-500">
             {t('profile.division')}: {division.title}
           </div>
           <div className="text-xs text-zinc-500 font-medium mt-1">
-            {userProfile.casualWins}W - {userProfile.casualLosses}L ({casualWinRate}%)
+            {currentStats.casualWins}W - {currentStats.casualLosses}L ({casualWinRate}%)
           </div>
           <div className="text-xs text-zinc-500 font-medium mt-1">
             {division.shielded
@@ -462,12 +469,12 @@ export default function Profile() {
         <div className={clsx('border rounded-3xl p-5', theme === 'dark' ? 'bg-zinc-900/50 border-white/5' : 'bg-white border-zinc-200 shadow-sm')}>
           <div className="flex items-center gap-2 text-amber-500 mb-4">
             <Activity className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.rankedStats')}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.rankedStats')} ¡¤ {sportLabel}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-            {userProfile.rankedPoints} <span className="text-sm font-medium text-zinc-500">{t('profile.points')}</span>
+            {currentStats.rankedPoints} <span className="text-sm font-medium text-zinc-500">{t('profile.points')}</span>
           </div>
-          <div className="text-xs text-zinc-500 font-medium mt-1">{t('profile.avgRank')}: #{userProfile.averageRank || '-'}</div>
+          <div className="text-xs text-zinc-500 font-medium mt-1">{t('profile.avgRank')}: #{currentStats.averageRank || '-'}</div>
         </div>
       </div>
 
@@ -528,7 +535,7 @@ export default function Profile() {
                         {player.displayName}
                       </div>
                       <div className={clsx('text-xs font-medium mt-1 truncate', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                        @{player.nickname} / {player.coins} coins / {player.rankedPoints} pts
+                        @{player.nickname} / {player.coins} coins / {getSportStats(player, sport).rankedPoints} pts
                       </div>
                     </div>
                   </div>
@@ -679,6 +686,7 @@ export default function Profile() {
         open={isInventoryOpen}
         theme={theme}
         language={language}
+        sport={sport}
         userProfile={userProfile}
         inventoryTab={inventoryTab}
         busy={inventoryBusy}
@@ -744,3 +752,9 @@ export default function Profile() {
     </div>
   );
 }
+
+
+
+
+
+

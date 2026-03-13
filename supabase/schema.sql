@@ -2578,3 +2578,1104 @@ select public.ensure_system_tournament();
 
 
 
+
+-- Multi-sport foundation
+create or replace function public.default_single_sport_stats()
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'casualStars', 0,
+    'casualWins', 0,
+    'casualLosses', 0,
+    'rankedPoints', 0,
+    'rankedWins', 0,
+    'rankedLosses', 0,
+    'averageRank', 0,
+    'tournamentsPlayed', 0
+  );
+$$;
+
+create or replace function public.default_stats_by_sport()
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'table_tennis', public.default_single_sport_stats(),
+    'badminton', public.default_single_sport_stats()
+  );
+$$;
+
+create or replace function public.normalize_sport_key(p_sport text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select case when btrim(coalesce(p_sport, '')) = 'badminton' then 'badminton' else 'table_tennis' end;
+$$;
+
+create or replace function public.normalize_stats_by_sport(p_stats jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'table_tennis', public.default_single_sport_stats() || coalesce(p_stats -> 'table_tennis', '{}'::jsonb),
+    'badminton', public.default_single_sport_stats() || coalesce(p_stats -> 'badminton', '{}'::jsonb)
+  );
+$$;
+
+create or replace function public.profile_sport_metric(
+  p_stats jsonb,
+  p_sport text,
+  p_key text
+)
+returns integer
+language sql
+immutable
+set search_path = public
+as $$
+  select coalesce((public.normalize_stats_by_sport(p_stats) -> public.normalize_sport_key(p_sport) ->> p_key)::integer, 0);
+$$;
+
+create or replace function public.replace_profile_sport_stats(
+  p_stats jsonb,
+  p_sport text,
+  p_values jsonb
+)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_set(
+    public.normalize_stats_by_sport(p_stats),
+    array[public.normalize_sport_key(p_sport)],
+    public.default_single_sport_stats() || coalesce(p_values, '{}'::jsonb),
+    true
+  );
+$$;
+
+create or replace function public.set_profile_sport_metric(
+  p_stats jsonb,
+  p_sport text,
+  p_key text,
+  p_value integer
+)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_set(
+    public.normalize_stats_by_sport(p_stats),
+    array[public.normalize_sport_key(p_sport), p_key],
+    to_jsonb(greatest(coalesce(p_value, 0), 0)),
+    true
+  );
+$$;
+
+create or replace function public.increment_profile_sport_metric(
+  p_stats jsonb,
+  p_sport text,
+  p_key text,
+  p_delta integer
+)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select public.set_profile_sport_metric(
+    p_stats,
+    p_sport,
+    p_key,
+    public.profile_sport_metric(p_stats, p_sport, p_key) + coalesce(p_delta, 0)
+  );
+$$;
+
+create or replace function public.normalize_inventory_trophies_sport(p_inventory jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_set(
+    coalesce(p_inventory, '{"trophies":[],"titles":["Novice Player"],"items":[]}'::jsonb),
+    '{trophies}',
+    coalesce(
+      (
+        select jsonb_agg(
+          case
+            when coalesce(value ->> 'sport', '') in ('table_tennis', 'badminton') then value
+            else value || jsonb_build_object('sport', 'table_tennis')
+          end
+        )
+        from jsonb_array_elements(coalesce(p_inventory -> 'trophies', '[]'::jsonb)) as value
+      ),
+      '[]'::jsonb
+    ),
+    true
+  );
+$$;
+
+create or replace function public.sync_legacy_profile_stats_from_stats_by_sport(p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_user_id is null then
+    return;
+  end if;
+
+  update public.profiles
+  set
+    casual_stars = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'casualStars'),
+    casual_wins = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'casualWins'),
+    casual_losses = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'casualLosses'),
+    ranked_points = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'rankedPoints'),
+    ranked_wins = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'rankedWins'),
+    ranked_losses = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'rankedLosses'),
+    average_rank = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'averageRank'),
+    tournaments_played = public.profile_sport_metric(stats_by_sport, 'table_tennis', 'tournamentsPlayed')
+  where id = p_user_id;
+end;
+$$;
+
+alter table public.profiles add column if not exists stats_by_sport jsonb not null default '{"table_tennis":{"casualStars":0,"casualWins":0,"casualLosses":0,"rankedPoints":0,"rankedWins":0,"rankedLosses":0,"averageRank":0,"tournamentsPlayed":0},"badminton":{"casualStars":0,"casualWins":0,"casualLosses":0,"rankedPoints":0,"rankedWins":0,"rankedLosses":0,"averageRank":0,"tournamentsPlayed":0}}'::jsonb;
+update public.profiles
+set stats_by_sport = public.replace_profile_sport_stats(
+  coalesce(stats_by_sport, public.default_stats_by_sport()),
+  'table_tennis',
+  jsonb_build_object(
+    'casualStars', coalesce(casual_stars, 0),
+    'casualWins', coalesce(casual_wins, 0),
+    'casualLosses', coalesce(casual_losses, 0),
+    'rankedPoints', coalesce(ranked_points, 0),
+    'rankedWins', coalesce(ranked_wins, 0),
+    'rankedLosses', coalesce(ranked_losses, 0),
+    'averageRank', coalesce(average_rank, 0),
+    'tournamentsPlayed', coalesce(tournaments_played, 0)
+  )
+);
+update public.profiles
+set stats_by_sport = public.normalize_stats_by_sport(stats_by_sport),
+    inventory = public.normalize_inventory_trophies_sport(inventory);
+
+alter table public.matches add column if not exists sport text not null default 'table_tennis';
+update public.matches
+set sport = 'table_tennis'
+where sport is null
+   or btrim(sport) = ''
+   or sport not in ('table_tennis', 'badminton');
+alter table public.matches drop constraint if exists matches_sport_check;
+alter table public.matches
+  add constraint matches_sport_check
+  check (sport in ('table_tennis', 'badminton'));
+
+alter table public.tournaments add column if not exists sport text not null default 'table_tennis';
+update public.tournaments
+set sport = 'table_tennis'
+where sport is null
+   or btrim(sport) = ''
+   or sport not in ('table_tennis', 'badminton');
+alter table public.tournaments drop constraint if exists tournaments_sport_check;
+alter table public.tournaments
+  add constraint tournaments_sport_check
+  check (sport in ('table_tennis', 'badminton'));
+
+drop function if exists public.list_leaderboard_profiles(text);
+create or replace function public.list_leaderboard_profiles(
+  p_session_token text,
+  p_sport text default 'table_tennis'
+)
+returns setof public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_sport text := public.normalize_sport_key(p_sport);
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  return query
+  select *
+  from public.profiles
+  where not coalesce(is_root, false)
+  order by
+    public.profile_sport_metric(stats_by_sport, v_sport, 'casualStars') desc,
+    public.profile_sport_metric(stats_by_sport, v_sport, 'rankedPoints') desc,
+    public.profile_sport_metric(stats_by_sport, v_sport, 'casualWins') desc,
+    created_at asc;
+end;
+$$;
+
+drop function if exists public.list_recent_matches_for_user(text, integer);
+create or replace function public.list_recent_matches_for_user(
+  p_session_token text,
+  p_limit integer default 8,
+  p_sport text default null
+)
+returns setof public.matches
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_limit integer := greatest(1, least(coalesce(p_limit, 8), 1000));
+  v_sport text := case when p_sport in ('table_tennis', 'badminton') then p_sport else null end;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  return query
+  select *
+  from public.matches
+  where (player1_id = v_requester.id or player2_id = v_requester.id)
+    and (v_sport is null or sport = v_sport)
+  order by created_at desc
+  limit v_limit;
+end;
+$$;
+
+drop function if exists public.list_active_casual_matches_for_user(text);
+create or replace function public.list_active_casual_matches_for_user(
+  p_session_token text,
+  p_sport text default 'table_tennis'
+)
+returns setof public.matches
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_sport text := public.normalize_sport_key(p_sport);
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  return query
+  select *
+  from public.matches
+  where type = 'casual'
+    and sport = v_sport
+    and status in ('pending', 'ongoing')
+    and (player1_id = v_requester.id or player2_id = v_requester.id)
+  order by updated_at desc;
+end;
+$$;
+
+drop function if exists public.create_match_request(text, uuid, text);
+create or replace function public.create_match_request(
+  p_session_token text,
+  p_opponent_id uuid,
+  p_match_type text default 'casual',
+  p_sport text default 'table_tennis'
+)
+returns public.matches
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_player1 public.profiles;
+  v_player2 public.profiles;
+  v_match public.matches;
+  v_existing_match_id uuid;
+  v_sport text := public.normalize_sport_key(p_sport);
+begin
+  v_player1 := public.current_profile_from_session(p_session_token, false);
+
+  if v_player1.id = p_opponent_id then
+    raise exception 'You cannot challenge yourself.';
+  end if;
+
+  if p_match_type not in ('casual', 'ranked') then
+    raise exception 'Unsupported match type.';
+  end if;
+
+  select *
+  into v_player2
+  from public.profiles
+  where id = p_opponent_id;
+
+  if v_player2.id is null then
+    raise exception 'Opponent not found.';
+  end if;
+
+  select id
+  into v_existing_match_id
+  from public.matches
+  where type = p_match_type
+    and sport = v_sport
+    and status in ('pending', 'ongoing')
+    and (
+      (player1_id = v_player1.id and player2_id = v_player2.id)
+      or
+      (player1_id = v_player2.id and player2_id = v_player1.id)
+    )
+  limit 1;
+
+  if v_existing_match_id is not null then
+    raise exception 'There is already an active % match between these players.', p_match_type;
+  end if;
+
+  insert into public.matches (
+    player1_id,
+    player2_id,
+    player1_name,
+    player2_name,
+    player1_photo,
+    player2_photo,
+    status,
+    type,
+    sport
+  )
+  values (
+    v_player1.id,
+    v_player2.id,
+    v_player1.display_name,
+    v_player2.display_name,
+    coalesce(v_player1.avatar_url, ''),
+    coalesce(v_player2.avatar_url, ''),
+    'pending',
+    p_match_type,
+    v_sport
+  )
+  returning * into v_match;
+
+  return v_match;
+end;
+$$;
+
+create or replace function public.submit_match_score(
+  p_session_token text,
+  p_match_id uuid,
+  p_my_score integer,
+  p_opponent_score integer
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_match public.matches;
+  v_updated_match public.matches;
+  v_caller_is_player1 boolean;
+  v_counterpart_confirmed boolean;
+  v_result text := 'waiting';
+  v_winner_id uuid;
+  v_loser_id uuid;
+  v_sport text;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  select *
+  into v_match
+  from public.matches
+  where id = p_match_id
+  for update;
+
+  if v_match.id is null then
+    raise exception 'Match not found.';
+  end if;
+
+  if v_match.status <> 'ongoing' then
+    raise exception 'Only ongoing matches can accept scores.';
+  end if;
+
+  if v_requester.id <> v_match.player1_id and v_requester.id <> v_match.player2_id then
+    raise exception 'You are not allowed to update this match.';
+  end if;
+
+  if p_my_score is null or p_opponent_score is null then
+    raise exception 'Both scores are required.';
+  end if;
+
+  if p_my_score = p_opponent_score then
+    raise exception 'Tie scores are not supported.';
+  end if;
+
+  v_sport := public.normalize_sport_key(v_match.sport);
+  v_caller_is_player1 := v_requester.id = v_match.player1_id;
+  v_counterpart_confirmed := case
+    when v_caller_is_player1 then v_match.player2_confirmed
+    else v_match.player1_confirmed
+  end;
+
+  if not v_counterpart_confirmed then
+    update public.matches
+    set
+      player1_score = case when v_caller_is_player1 then p_my_score else p_opponent_score end,
+      player2_score = case when v_caller_is_player1 then p_opponent_score else p_my_score end,
+      player1_confirmed = case when v_caller_is_player1 then true else player1_confirmed end,
+      player2_confirmed = case when v_caller_is_player1 then player2_confirmed else true end
+    where id = p_match_id
+    returning * into v_updated_match;
+
+    return jsonb_build_object('result', v_result, 'match', to_jsonb(v_updated_match));
+  end if;
+
+  if (
+    (v_caller_is_player1 and p_my_score = v_match.player1_score and p_opponent_score = v_match.player2_score)
+    or
+    ((not v_caller_is_player1) and p_my_score = v_match.player2_score and p_opponent_score = v_match.player1_score)
+  ) then
+    v_winner_id := case
+      when coalesce(v_match.player1_score, 0) > coalesce(v_match.player2_score, 0) then v_match.player1_id
+      else v_match.player2_id
+    end;
+    v_loser_id := case
+      when v_winner_id = v_match.player1_id then v_match.player2_id
+      else v_match.player1_id
+    end;
+
+    update public.matches
+    set
+      player1_score = case when v_caller_is_player1 then p_my_score else p_opponent_score end,
+      player2_score = case when v_caller_is_player1 then p_opponent_score else p_my_score end,
+      player1_confirmed = true,
+      player2_confirmed = true,
+      status = 'completed',
+      winner_id = v_winner_id
+    where id = p_match_id
+    returning * into v_updated_match;
+
+    update public.profiles
+    set
+      stats_by_sport = public.increment_profile_sport_metric(
+        public.increment_profile_sport_metric(coalesce(stats_by_sport, public.default_stats_by_sport()), v_sport, 'casualWins', 1),
+        v_sport,
+        'casualStars',
+        1
+      ),
+      inventory = public.append_title(inventory, 'Match Participant')
+    where id = v_winner_id
+      and not coalesce(is_root, false);
+
+    update public.profiles
+    set
+      stats_by_sport = public.set_profile_sport_metric(
+        public.increment_profile_sport_metric(coalesce(stats_by_sport, public.default_stats_by_sport()), v_sport, 'casualLosses', 1),
+        v_sport,
+        'casualStars',
+        case
+          when public.profile_sport_metric(coalesce(stats_by_sport, public.default_stats_by_sport()), v_sport, 'casualStars') <= 10
+            then public.profile_sport_metric(coalesce(stats_by_sport, public.default_stats_by_sport()), v_sport, 'casualStars')
+          else greatest(public.profile_sport_metric(coalesce(stats_by_sport, public.default_stats_by_sport()), v_sport, 'casualStars') - 1, 0)
+        end
+      ),
+      inventory = public.append_title(inventory, 'Match Participant')
+    where id = v_loser_id
+      and not coalesce(is_root, false);
+
+    perform public.sync_legacy_profile_stats_from_stats_by_sport(v_winner_id);
+    perform public.sync_legacy_profile_stats_from_stats_by_sport(v_loser_id);
+
+    v_result := 'completed';
+    return jsonb_build_object('result', v_result, 'match', to_jsonb(v_updated_match));
+  end if;
+
+  update public.matches
+  set
+    player1_score = null,
+    player2_score = null,
+    player1_confirmed = false,
+    player2_confirmed = false
+  where id = p_match_id
+  returning * into v_updated_match;
+
+  v_result := 'reset';
+  return jsonb_build_object('result', v_result, 'match', to_jsonb(v_updated_match));
+end;
+$$;
+
+drop function if exists public.ensure_system_tournament();
+create or replace function public.ensure_system_tournament(
+  p_sport text default 'table_tennis'
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_tournament public.tournaments;
+  v_tournament_id uuid := extensions.gen_random_uuid();
+  v_sport text := public.normalize_sport_key(p_sport);
+  v_name text;
+  v_sport_label text;
+begin
+  select *
+  into v_tournament
+  from public.tournaments
+  where source = 'system'
+    and sport = v_sport
+    and status in ('registration', 'ongoing')
+  order by start_date desc
+  limit 1;
+
+  if v_tournament.id is not null then
+    return v_tournament;
+  end if;
+
+  v_sport_label := case when v_sport = 'badminton' then 'badminton' else 'table tennis' end;
+  v_name := case when v_sport = 'badminton' then 'Weekly Badminton Championship' else 'Weekly Table Tennis Championship' end;
+
+  insert into public.tournaments (
+    id,
+    name,
+    status,
+    source,
+    sport,
+    start_date,
+    end_date,
+    format,
+    bracket,
+    timeline
+  )
+  values (
+    v_tournament_id,
+    v_name,
+    'registration',
+    'system',
+    v_sport,
+    timezone('utc', now()),
+    timezone('utc', now()) + interval '7 days',
+    'single_elimination_third',
+    '{"size":0,"matches":[]}'::jsonb,
+    jsonb_build_array(
+      jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'type', 'registration_opened',
+        'title', v_name || ' registration is open',
+        'description', 'Players can join the ' || v_sport_label || ' bracket now.',
+        'createdAt', timezone('utc', now()),
+        'tournamentId', v_tournament_id,
+        'matchId', null
+      )
+    )
+  )
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
+
+drop function if exists public.list_tournaments_for_user(text);
+create or replace function public.list_tournaments_for_user(
+  p_session_token text,
+  p_sport text default 'table_tennis'
+)
+returns setof public.tournaments
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_sport text := public.normalize_sport_key(p_sport);
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  return query
+  select *
+  from public.tournaments
+  where sport = v_sport
+  order by
+    case status
+      when 'registration' then 0
+      when 'ongoing' then 1
+      when 'completed' then 2
+      else 3
+    end,
+    case source
+      when 'system' then 0
+      else 1
+    end,
+    start_date desc;
+end;
+$$;
+
+create or replace function public.award_tournament_rewards(
+  p_tournament_id uuid
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_tournament public.tournaments;
+  v_participant uuid;
+  v_elimination_round integer;
+  v_coin_reward integer;
+  v_points integer;
+  v_trophy jsonb;
+  v_participant_is_root boolean;
+  v_sport text;
+begin
+  select *
+  into v_tournament
+  from public.tournaments
+  where id = p_tournament_id
+  for update;
+
+  if v_tournament.id is null then
+    raise exception 'Tournament not found.';
+  end if;
+
+  if v_tournament.rewards_granted then
+    return v_tournament;
+  end if;
+
+  if v_tournament.status <> 'completed' then
+    raise exception 'Tournament rewards can only be granted after completion.';
+  end if;
+
+  v_sport := public.normalize_sport_key(v_tournament.sport);
+
+  foreach v_participant in array coalesce(v_tournament.participants, '{}'::uuid[])
+  loop
+    select coalesce(is_root, false)
+    into v_participant_is_root
+    from public.profiles
+    where id = v_participant;
+
+    if coalesce(v_participant_is_root, false) then
+      continue;
+    end if;
+
+    select max((match.value ->> 'round')::integer)
+    into v_elimination_round
+    from jsonb_array_elements(coalesce(v_tournament.bracket -> 'matches', '[]'::jsonb)) as match(value)
+    where coalesce(match.value ->> 'status', '') in ('completed', 'walkover')
+      and public.get_tournament_match_loser_id(match.value) = v_participant;
+
+    v_coin_reward := case
+      when v_elimination_round is null then 10
+      else public.get_tournament_round_coin_reward(v_elimination_round)
+    end;
+
+    v_points := case
+      when v_participant = v_tournament.winner_id then 10
+      when v_participant = v_tournament.runner_up_id then 5
+      when v_participant = v_tournament.third_place_id then 2
+      else 0
+    end;
+
+    update public.profiles
+    set
+      stats_by_sport = public.increment_profile_sport_metric(
+        public.increment_profile_sport_metric(coalesce(stats_by_sport, public.default_stats_by_sport()), v_sport, 'tournamentsPlayed', 1),
+        v_sport,
+        'rankedPoints',
+        v_points
+      ),
+      coins = coins + greatest(v_coin_reward, 10),
+      inventory = public.append_title(inventory, 'Tournament Participant')
+    where id = v_participant;
+
+    perform public.sync_legacy_profile_stats_from_stats_by_sport(v_participant);
+
+    if v_participant = v_tournament.winner_id then
+      v_trophy := jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'name', 'Champion Trophy',
+        'tournamentName', v_tournament.name,
+        'rank', 1,
+        'date', to_char(current_date, 'YYYY-MM-DD'),
+        'sport', v_sport
+      );
+
+      update public.profiles
+      set inventory = public.append_trophy(inventory, v_trophy)
+      where id = v_participant;
+    elsif v_participant = v_tournament.runner_up_id then
+      v_trophy := jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'name', 'Finalist Medal',
+        'tournamentName', v_tournament.name,
+        'rank', 2,
+        'date', to_char(current_date, 'YYYY-MM-DD'),
+        'sport', v_sport
+      );
+
+      update public.profiles
+      set inventory = public.append_trophy(inventory, v_trophy)
+      where id = v_participant;
+    elsif v_participant = v_tournament.third_place_id then
+      v_trophy := jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'name', 'Bronze Medal',
+        'tournamentName', v_tournament.name,
+        'rank', 3,
+        'date', to_char(current_date, 'YYYY-MM-DD'),
+        'sport', v_sport
+      );
+
+      update public.profiles
+      set inventory = public.append_trophy(inventory, v_trophy)
+      where id = v_participant;
+    end if;
+  end loop;
+
+  update public.tournaments
+  set rewards_granted = true
+  where id = p_tournament_id
+  returning * into v_tournament;
+
+  perform public.ensure_system_tournament(v_sport);
+
+  return v_tournament;
+end;
+$$;
+
+drop function if exists public.create_tournament(text, text, text);
+create or replace function public.create_tournament(
+  p_session_token text,
+  p_name text default null,
+  p_source text default 'admin',
+  p_sport text default 'table_tennis'
+)
+returns public.tournaments
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_requester public.profiles;
+  v_tournament public.tournaments;
+  v_tournament_id uuid := extensions.gen_random_uuid();
+  v_source text := case when p_source in ('system', 'admin') then p_source else 'admin' end;
+  v_sport text := public.normalize_sport_key(p_sport);
+  v_name text;
+  v_sport_label text := case when public.normalize_sport_key(p_sport) = 'badminton' then 'Badminton' else 'Table Tennis' end;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can create a tournament.';
+  end if;
+
+  if v_source = 'system' then
+    return public.ensure_system_tournament(v_sport);
+  end if;
+
+  v_name := coalesce(
+    nullif(btrim(coalesce(p_name, '')), ''),
+    case when v_sport = 'badminton' then 'Admin Badminton Spotlight Cup' else 'Admin Table Tennis Spotlight Cup' end
+  );
+
+  if exists (
+    select 1
+    from public.tournaments
+    where status in ('registration', 'ongoing')
+      and source = v_source
+      and sport = v_sport
+  ) then
+    raise exception 'Finish or cancel the active % % tournament before creating a new one.', v_source, v_sport;
+  end if;
+
+  insert into public.tournaments (
+    id,
+    name,
+    status,
+    source,
+    sport,
+    start_date,
+    end_date,
+    admin_user_id,
+    format,
+    bracket,
+    timeline
+  )
+  values (
+    v_tournament_id,
+    v_name,
+    'registration',
+    v_source,
+    v_sport,
+    timezone('utc', now()),
+    timezone('utc', now()) + interval '7 days',
+    v_requester.id,
+    'single_elimination_third',
+    '{"size":0,"matches":[]}'::jsonb,
+    public.append_tournament_event(
+      '[]'::jsonb,
+      jsonb_build_object(
+        'id', extensions.gen_random_uuid()::text,
+        'type', 'registration_opened',
+        'title', v_name || ' registration is open',
+        'description', 'Players can join the ' || lower(v_sport_label) || ' bracket now.',
+        'createdAt', timezone('utc', now()),
+        'tournamentId', v_tournament_id,
+        'matchId', null
+      )
+    )
+  )
+  returning * into v_tournament;
+
+  return v_tournament;
+end;
+$$;
+
+create or replace function public.admin_reset_user_progress(
+  p_session_token text,
+  p_user_id uuid
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_target public.profiles;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can reset user data.';
+  end if;
+
+  if p_user_id is null then
+    raise exception 'Choose a user to reset.';
+  end if;
+
+  if p_user_id = v_requester.id then
+    raise exception 'Reset your own root account manually if you really need to.';
+  end if;
+
+  select *
+  into v_target
+  from public.profiles
+  where id = p_user_id
+  for update;
+
+  if v_target.id is null then
+    raise exception 'User not found.';
+  end if;
+
+  if exists (
+    select 1
+    from public.tournaments
+    where status = 'ongoing'
+      and (
+        p_user_id = any(participants)
+        or winner_id = p_user_id
+        or runner_up_id = p_user_id
+        or third_place_id = p_user_id
+        or admin_user_id = p_user_id
+      )
+  ) then
+    raise exception 'Cannot reset a user who is still part of an ongoing tournament.';
+  end if;
+
+  delete from public.tournament_match_comments
+  where user_id = p_user_id;
+
+  delete from public.matches
+  where player1_id = p_user_id
+     or player2_id = p_user_id;
+
+  update public.tournaments
+  set
+    participants = array_remove(participants, p_user_id),
+    winner_id = case when status = 'registration' and winner_id = p_user_id then null else winner_id end,
+    runner_up_id = case when status = 'registration' and runner_up_id = p_user_id then null else runner_up_id end,
+    third_place_id = case when status = 'registration' and third_place_id = p_user_id then null else third_place_id end,
+    admin_user_id = case when status = 'registration' and admin_user_id = p_user_id then null else admin_user_id end
+  where status = 'registration'
+    and (
+      p_user_id = any(participants)
+      or winner_id = p_user_id
+      or runner_up_id = p_user_id
+      or third_place_id = p_user_id
+      or admin_user_id = p_user_id
+    );
+
+  update public.profiles
+  set
+    display_name = nickname,
+    avatar_url = '',
+    casual_stars = 0,
+    casual_wins = 0,
+    casual_losses = 0,
+    ranked_points = 0,
+    ranked_wins = 0,
+    ranked_losses = 0,
+    average_rank = 0,
+    tournaments_played = 0,
+    stats_by_sport = public.default_stats_by_sport(),
+    coins = 0,
+    inventory = '{"trophies":[],"titles":["Novice Player"],"items":[]}'::jsonb,
+    showcase = '[{"slotId":1,"trophyId":null},{"slotId":2,"trophyId":null},{"slotId":3,"trophyId":null}]'::jsonb,
+    selected_title = 'Novice Player'
+  where id = p_user_id
+  returning * into v_target;
+
+  update public.app_sessions
+  set revoked_at = timezone('utc', now())
+  where user_id = p_user_id
+    and revoked_at is null;
+
+  return v_target;
+end;
+$$;
+
+drop function if exists public.recalculate_casual_profile_stats(uuid);
+create or replace function public.recalculate_casual_profile_stats(
+  p_user_id uuid,
+  p_sport text default 'table_tennis'
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_profile public.profiles;
+  v_match record;
+  v_sport text := public.normalize_sport_key(p_sport);
+  v_stars integer := 0;
+  v_wins integer := 0;
+  v_losses integer := 0;
+begin
+  if p_user_id is null then
+    return;
+  end if;
+
+  select *
+  into v_profile
+  from public.profiles
+  where id = p_user_id;
+
+  if v_profile.id is null then
+    return;
+  end if;
+
+  if coalesce(v_profile.is_root, false) then
+    update public.profiles
+    set stats_by_sport = public.replace_profile_sport_stats(
+      coalesce(stats_by_sport, public.default_stats_by_sport()),
+      v_sport,
+      jsonb_build_object(
+        'casualStars', 0,
+        'casualWins', 0,
+        'casualLosses', 0
+      )
+    )
+    where id = p_user_id;
+    perform public.sync_legacy_profile_stats_from_stats_by_sport(p_user_id);
+    return;
+  end if;
+
+  for v_match in
+    select winner_id
+    from public.matches
+    where type = 'casual'
+      and sport = v_sport
+      and status = 'completed'
+      and (player1_id = p_user_id or player2_id = p_user_id)
+    order by created_at asc, id asc
+  loop
+    if v_match.winner_id = p_user_id then
+      v_wins := v_wins + 1;
+      v_stars := v_stars + 1;
+    else
+      v_losses := v_losses + 1;
+      if v_stars > 10 then
+        v_stars := greatest(v_stars - 1, 0);
+      end if;
+    end if;
+  end loop;
+
+  update public.profiles
+  set stats_by_sport = public.replace_profile_sport_stats(
+    coalesce(stats_by_sport, public.default_stats_by_sport()),
+    v_sport,
+    jsonb_build_object(
+      'casualStars', v_stars,
+      'casualWins', v_wins,
+      'casualLosses', v_losses,
+      'rankedPoints', public.profile_sport_metric(stats_by_sport, v_sport, 'rankedPoints'),
+      'rankedWins', public.profile_sport_metric(stats_by_sport, v_sport, 'rankedWins'),
+      'rankedLosses', public.profile_sport_metric(stats_by_sport, v_sport, 'rankedLosses'),
+      'averageRank', public.profile_sport_metric(stats_by_sport, v_sport, 'averageRank'),
+      'tournamentsPlayed', public.profile_sport_metric(stats_by_sport, v_sport, 'tournamentsPlayed')
+    )
+  )
+  where id = p_user_id;
+
+  perform public.sync_legacy_profile_stats_from_stats_by_sport(p_user_id);
+end;
+$$;
+
+create or replace function public.admin_delete_match(
+  p_session_token text,
+  p_match_id uuid
+)
+returns public.matches
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_requester public.profiles;
+  v_match public.matches;
+begin
+  v_requester := public.current_profile_from_session(p_session_token, false);
+
+  if not coalesce(v_requester.is_root, false) then
+    raise exception 'Only the root admin can delete matches.';
+  end if;
+
+  if p_match_id is null then
+    raise exception 'Choose a match to delete.';
+  end if;
+
+  select *
+  into v_match
+  from public.matches
+  where id = p_match_id
+  for update;
+
+  if v_match.id is null then
+    raise exception 'Match not found.';
+  end if;
+
+  delete from public.matches
+  where id = p_match_id
+  returning * into v_match;
+
+  if v_match.type = 'casual' then
+    perform public.recalculate_casual_profile_stats(v_match.player1_id, v_match.sport);
+    perform public.recalculate_casual_profile_stats(v_match.player2_id, v_match.sport);
+  end if;
+
+  return v_match;
+end;
+$$;
+
+grant execute on function public.list_leaderboard_profiles(text, text) to anon, authenticated;
+grant execute on function public.list_recent_matches_for_user(text, integer, text) to anon, authenticated;
+grant execute on function public.list_active_casual_matches_for_user(text, text) to anon, authenticated;
+grant execute on function public.create_match_request(text, uuid, text, text) to anon, authenticated;
+grant execute on function public.list_tournaments_for_user(text, text) to anon, authenticated;
+grant execute on function public.create_tournament(text, text, text, text) to anon, authenticated;
+
+select public.ensure_system_tournament('table_tennis');
+select public.ensure_system_tournament('badminton');

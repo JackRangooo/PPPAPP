@@ -2,12 +2,25 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, zhCN } from 'date-fns/locale';
-import { Activity, ArrowRight, Loader2, Radio, Search, Star, Swords, Trash2, Trophy, User, X } from 'lucide-react';
+import {
+  Activity,
+  ArrowRight,
+  Loader2,
+  Radio,
+  Search,
+  Star,
+  Swords,
+  Trash2,
+  Trophy,
+  User,
+  X,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import ActivityHeatmap from '../components/ActivityHeatmap';
+import SportToggle from '../components/SportToggle';
 import {
   adminDeleteMatch,
   adminDeleteTournamentTimelineEvent,
@@ -17,6 +30,7 @@ import {
   searchProfiles,
 } from '../lib/api';
 import { getCompetitiveDivision } from '../lib/competitiveRank';
+import { getSportLabel, getSportStats } from '../lib/sports';
 import { subscribeToTable } from '../lib/supabase';
 import type { Match, TournamentTimelineEvent, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
@@ -28,13 +42,19 @@ const localizeBracketLabel = (language: 'en' | 'zh', value: string) => {
     return value;
   }
 
-  return value
-    .replace(/Grand Final/g, 'å†³èµ›')
-    .replace(/Third Place Match/g, 'å­£å†›èµ›')
-    .replace(/Quarterfinal\s+(\d+)/g, 'å››åˆ†ä¹‹ä¸€å†³èµ› $1')
-    .replace(/Qualifier\s+(\d+)/g, 'èµ„æ ¼èµ› $1')
-    .replace(/Play-In\s+(\d+)/g, 'é™„åŠ èµ› $1')
-    .replace(/Semifinal\s+(\d+)/g, 'åŠå†³èµ› $1');
+  if (value === 'Grand Final') return '¾öÈü';
+  if (value === 'Third Place Match') return '¼¾¾üÈü';
+
+  const quarter = value.match(/^Quarterfinal\s+(\d+)$/i);
+  if (quarter) return `ËÄ·ÖÖ®Ò»¾öÈü ${quarter[1]}`;
+
+  const qualifier = value.match(/^(Qualifier|Play-In)\s+(\d+)$/i);
+  if (qualifier) return `×Ê¸ñÈü ${qualifier[2]}`;
+
+  const semifinal = value.match(/^Semifinal\s+(\d+)$/i);
+  if (semifinal) return `°ë¾öÈü ${semifinal[1]}`;
+
+  return value;
 };
 
 const localizeTimelineTitle = (language: 'en' | 'zh', title: string) => {
@@ -43,29 +63,19 @@ const localizeTimelineTitle = (language: 'en' | 'zh', title: string) => {
   }
 
   let match = title.match(/^(.+) is ready$/);
-  if (match) {
-    return `${localizeBracketLabel(language, match[1])} å·²å°±ç»ª`;
-  }
+  if (match) return `${localizeBracketLabel(language, match[1])} ÒÑ¾ÍÐ÷`;
 
   match = title.match(/^(.+) is live$/);
-  if (match) {
-    return `${localizeBracketLabel(language, match[1])} å¼€å§‹è¿›è¡Œ`;
-  }
+  if (match) return `${localizeBracketLabel(language, match[1])} ÒÑ¿ªÈü`;
 
   match = title.match(/^(.+) advanced by walkover$/);
-  if (match) {
-    return `${localizeBracketLabel(language, match[1])} è½®ç©ºæ™‹çº§`;
-  }
+  if (match) return `${localizeBracketLabel(language, match[1])} ÂÖ¿Õ½ú¼¶`;
 
   match = title.match(/^(.+) won (.+)$/);
-  if (match) {
-    return `${match[1]} èµ¢ä¸‹ ${localizeBracketLabel(language, match[2])}`;
-  }
+  if (match) return `${match[1]} Ó®ÏÂ ${localizeBracketLabel(language, match[2])}`;
 
   match = title.match(/^(.+) was cancelled$/);
-  if (match) {
-    return `${match[1]} å·²å–æ¶ˆ`;
-  }
+  if (match) return `${match[1]} ÒÑÈ¡Ïû`;
 
   return localizeBracketLabel(language, title);
 };
@@ -76,36 +86,26 @@ const localizeTimelineDescription = (language: 'en' | 'zh', description: string)
   }
 
   let match = description.match(/^(\d+) players entered a (\d+)-slot bracket\.$/);
-  if (match) {
-    return `${match[1]} åçƒå‘˜è¿›å…¥äº† ${match[2]} äººæ·˜æ±°èµ›å¯¹é˜µã€‚`;
-  }
+  if (match) return `${match[1]} ÃûÇòÔ±½øÈëÁË ${match[2]} ÈËÌÔÌ­Èü¶ÔÕó¡£`;
 
   match = description.match(/^(.+) and (.+) are ready to play\.$/);
-  if (match) {
-    return `${match[1]} å’Œ ${match[2]} éƒ½å·²å°±ç»ªï¼Œå¯ä»¥å¼€å§‹æ¯”èµ›ã€‚`;
-  }
+  if (match) return `${match[1]} ºÍ ${match[2]} ¶¼ÒÑ¾ÍÐ÷£¬¿ÉÒÔ¿ªÊ¼±ÈÈü¡£`;
 
   match = description.match(/^(.+) moved on from (.+) without playing\.$/);
-  if (match) {
-    return `${match[1]} æ— éœ€æ¯”èµ›ï¼Œç›´æŽ¥ä»Ž ${localizeBracketLabel(language, match[2])} æ™‹çº§ã€‚`;
-  }
+  if (match) return `${match[1]} ÎÞÐè±ÈÈü£¬Ö±½Ó´Ó ${localizeBracketLabel(language, match[2])} ½ú¼¶¡£`;
 
   match = description.match(/^(.+) beat (.+) in (.+)\.$/);
-  if (match) {
-    return `${match[1]} åœ¨ ${localizeBracketLabel(language, match[3])} ä¸­å‡»è´¥äº† ${match[2]}ã€‚`;
-  }
+  if (match) return `${match[1]} ÔÚ ${localizeBracketLabel(language, match[3])} ÖÐ»÷°ÜÁË ${match[2]}¡£`;
 
   if (description === 'The root admin closed this event before it finished.') {
-    return 'root ç®¡ç†å‘˜åœ¨èµ›äº‹ç»“æŸå‰å…³é—­äº†è¿™åœºèµ›äº‹ã€‚';
+    return 'root ¹ÜÀíÔ±ÔÚÈüÊÂ½áÊøÇ°¹Ø±ÕÁËÕâ³¡±ÈÈü¡£';
   }
 
   match = description.match(/^(.+) is the new champion, and (.+) claimed third place\.$/);
-  if (match) {
-    return `${match[1]} å¤ºå¾—å† å†›ï¼Œ${match[2]} èŽ·å¾—å­£å†›ã€‚`;
-  }
+  if (match) return `${match[1]} »ñµÃ¹Ú¾ü£¬${match[2]} »ñµÃ¼¾¾ü¡£`;
 
   if (description === 'Bracket seeding is locked and matches are live.') {
-    return 'å¯¹é˜µå·²é”å®šï¼Œæ¯”èµ›æ­£å¼å¼€å§‹ã€‚';
+    return '¶ÔÕóÒÑ¾­Ëø¶¨£¬±ÈÈüÕýÊ½¿ªÊ¼¡£';
   }
 
   return localizeBracketLabel(language, description);
@@ -118,7 +118,7 @@ const formatRelativeTime = (language: 'en' | 'zh', value: string) =>
   });
 
 export default function Dashboard() {
-  const { userProfile, theme, language } = useAuth();
+  const { userProfile, theme, language, sport, setSport } = useAuth();
   const t = useTranslation(language);
   const navigate = useNavigate();
   const [activityMatches, setActivityMatches] = useState<Match[]>([]);
@@ -139,7 +139,7 @@ export default function Dashboard() {
 
     const loadMatches = async () => {
       try {
-        const matches = await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT);
+        const matches = await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT, sport);
         if (active) {
           setActivityMatches(matches);
         }
@@ -152,7 +152,7 @@ export default function Dashboard() {
     return subscribeToTable('matches', () => {
       void loadMatches();
     });
-  }, [userProfile]);
+  }, [sport, userProfile]);
 
   useEffect(() => {
     if (!userProfile) {
@@ -164,11 +164,12 @@ export default function Dashboard() {
 
     const loadFeed = async () => {
       try {
-        const tournaments = await listTournaments();
+        const tournaments = await listTournaments(sport);
         const nextEvents = tournaments
           .flatMap((tournament) => tournament.timeline)
           .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
           .slice(0, 8);
+
         if (active) {
           setFeedEvents(nextEvents);
         }
@@ -181,7 +182,7 @@ export default function Dashboard() {
     return subscribeToTable('tournaments', () => {
       void loadFeed();
     });
-  }, [userProfile]);
+  }, [sport, userProfile]);
 
   useEffect(() => {
     if (!userProfile) {
@@ -215,16 +216,28 @@ export default function Dashboard() {
     return null;
   }
 
+  const sportLabel = getSportLabel(sport, language);
+  const currentStats = getSportStats(userProfile, sport);
+  const recentMatches = activityMatches.slice(0, 8);
+  const displayName = (userProfile.displayName || userProfile.nickname || 'Player').trim();
+  const firstName = displayName ? displayName.split(/\s+/)[0] : 'Player';
+  const winRate =
+    currentStats.casualWins + currentStats.casualLosses > 0
+      ? Math.round((currentStats.casualWins / (currentStats.casualWins + currentStats.casualLosses)) * 100)
+      : 0;
+  const division = getCompetitiveDivision(currentStats.casualStars, language);
   const isRoot = Boolean(userProfile.isRoot);
+  const liveFeed = feedEvents.slice(0, 6);
+
   const adminCopy =
     language === 'zh'
       ? {
-          deleteFeed: 'åˆ é™¤åŠ¨æ€',
-          deleteFeedConfirm: 'ç¡®è®¤åˆ é™¤è¿™æ¡èµ›äº‹åŠ¨æ€å—ï¼Ÿ',
-          deleteFeedFailed: 'åˆ é™¤èµ›äº‹åŠ¨æ€å¤±è´¥ã€‚',
-          deleteMatch: 'åˆ é™¤æ¯”èµ›',
-          deleteMatchConfirm: 'ç¡®è®¤åˆ é™¤è¿™æ¡æœ€è¿‘æ¯”èµ›è®°å½•å—ï¼Ÿ',
-          deleteMatchFailed: 'åˆ é™¤æœ€è¿‘æ¯”èµ›å¤±è´¥ã€‚',
+          deleteFeed: 'É¾³ý¶¯Ì¬',
+          deleteFeedConfirm: 'È·ÈÏÉ¾³ýÕâÌõÈüÊÂ¶¯Ì¬Âð£¿',
+          deleteFeedFailed: 'É¾³ýÈüÊÂ¶¯Ì¬Ê§°Ü¡£',
+          deleteMatch: 'É¾³ý±ÈÈü',
+          deleteMatchConfirm: 'È·ÈÏÉ¾³ýÕâÌõ×î½ü±ÈÈü¼ÇÂ¼Âð£¿',
+          deleteMatchFailed: 'É¾³ý×î½ü±ÈÈüÊ§°Ü¡£',
         }
       : {
           deleteFeed: 'Delete Feed',
@@ -235,28 +248,18 @@ export default function Dashboard() {
           deleteMatchFailed: 'Failed to delete this recent match.',
         };
 
-  const recentMatches = activityMatches.slice(0, 8);
-  const displayName = (userProfile.displayName || userProfile.nickname || 'Player').trim();
-  const firstName = displayName ? displayName.split(/\s+/)[0] : 'Player';
-  const winRate =
-    userProfile.casualWins + userProfile.casualLosses > 0
-      ? Math.round((userProfile.casualWins / (userProfile.casualWins + userProfile.casualLosses)) * 100)
-      : 0;
-  const division = getCompetitiveDivision(userProfile.casualStars, language);
-
-  const feedTitle = language === 'zh' ? 'èµ›äº‹åŠ¨æ€' : 'Tournament Feed';
+  const feedTitle = language === 'zh' ? `${sportLabel}ÈüÊÂ¶¯Ì¬` : `${sportLabel} Tournament Feed`;
   const feedEmpty =
     language === 'zh'
-      ? 'å¼€èµ›ã€æ™‹çº§å’Œå¤ºå† åŠ¨æ€ä¼šæ˜¾ç¤ºåœ¨è¿™é‡Œã€‚'
+      ? '¿ªÈü¡¢½ú¼¶ºÍ¶á¹Ú¶¯Ì¬»áÏÔÊ¾ÔÚÕâÀï¡£'
       : 'Bracket starts, advances, and title wins will show up here.';
-  const liveFeed = feedEvents.slice(0, 6);
 
   const refreshMatches = async () => {
-    setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT));
+    setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT, sport));
   };
 
   const refreshFeed = async () => {
-    const tournaments = await listTournaments();
+    const tournaments = await listTournaments(sport);
     const nextEvents = tournaments
       .flatMap((tournament) => tournament.timeline)
       .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
@@ -323,30 +326,30 @@ export default function Dashboard() {
         </Link>
       </header>
 
+      <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} />
+
       <div className="relative">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
-          <input
-            type="text"
-            placeholder={t('dashboard.searchPlayers')}
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            className={clsx(
-              'w-full rounded-2xl border py-4 pl-12 pr-12 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50',
-              theme === 'dark'
-                ? 'border-white/5 bg-zinc-900/50 text-white placeholder:text-zinc-600'
-                : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 shadow-sm',
-            )}
-          />
-          {searchQuery ? (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-emerald-500"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          ) : null}
-        </div>
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+        <input
+          type="text"
+          placeholder={t('dashboard.searchPlayers')}
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          className={clsx(
+            'w-full rounded-2xl border py-4 pl-12 pr-12 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/50',
+            theme === 'dark'
+              ? 'border-white/5 bg-zinc-900/50 text-white placeholder:text-zinc-600'
+              : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 shadow-sm',
+          )}
+        />
+        {searchQuery ? (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 transition-colors hover:text-emerald-500"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        ) : null}
 
         <AnimatePresence>
           {searchQuery.length >= 2 ? (
@@ -382,7 +385,9 @@ export default function Dashboard() {
                         referrerPolicy="no-referrer"
                       />
                       <div>
-                        <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{result.displayName}</div>
+                        <div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                          {result.displayName}
+                        </div>
                         <div className="text-xs text-zinc-500">{result.selectedTitle || t('profile.novicePlayer')}</div>
                       </div>
                       <User className="ml-auto h-4 w-4 text-zinc-400" />
@@ -407,7 +412,9 @@ export default function Dashboard() {
             <span className="text-xs font-bold uppercase tracking-wider">{t('dashboard.casual')}</span>
           </div>
           <div>
-            <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{userProfile.casualStars}</div>
+            <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+              {currentStats.casualStars}
+            </div>
             <div className="text-sm font-medium text-zinc-500">{t('profile.stars')}</div>
             <div className="mt-2 text-[11px] font-black uppercase tracking-[0.16em] text-amber-500">{division.title}</div>
           </div>
@@ -422,8 +429,12 @@ export default function Dashboard() {
             <span className="text-xs font-bold uppercase tracking-wider">{t('leaderboard.winRate')}</span>
           </div>
           <div>
-            <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{winRate}%</div>
-            <div className="text-sm font-medium text-zinc-500">{userProfile.casualWins}W - {userProfile.casualLosses}L</div>
+            <div className={clsx('mb-1 text-4xl font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+              {winRate}%
+            </div>
+            <div className="text-sm font-medium text-zinc-500">
+              {currentStats.casualWins}W - {currentStats.casualLosses}L
+            </div>
           </div>
         </div>
       </div>
@@ -511,7 +522,9 @@ export default function Dashboard() {
 
       <div>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{t('dashboard.recentMatches')}</h2>
+          <h2 className={clsx('text-lg font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+            {t('dashboard.recentMatches')}
+          </h2>
           <Link to="/profile" className="flex items-center gap-1 text-sm font-medium text-emerald-500 transition-colors hover:text-emerald-400">
             {t('dashboard.viewAll')} <ArrowRight className="h-4 w-4" />
           </Link>
@@ -552,9 +565,11 @@ export default function Dashboard() {
                           referrerPolicy="no-referrer"
                         />
                         <div className="min-w-0">
-                          <div className={clsx('truncate font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{opponentName}</div>
+                          <div className={clsx('truncate font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                            {opponentName}
+                          </div>
                           <div className="text-xs font-medium text-zinc-500">
-                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} - {formatRelativeTime(language, match.createdAt)}
+                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} ¡¤ {formatRelativeTime(language, match.createdAt)}
                           </div>
                         </div>
                       </div>
@@ -601,3 +616,7 @@ export default function Dashboard() {
     </motion.div>
   );
 }
+
+
+
+
