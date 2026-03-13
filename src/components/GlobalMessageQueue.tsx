@@ -449,6 +449,7 @@ export default function GlobalMessageQueue() {
 
         if (
           item.kind === 'tournament' &&
+          item.myConfirmed &&
           item.match.status === 'waiting_confirmation' &&
           item.match.player1Score !== null &&
           item.match.player2Score !== null &&
@@ -923,4 +924,5 @@ export default function GlobalMessageQueue() {
     </>
   );
 }
+
 

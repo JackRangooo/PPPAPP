@@ -1,4 +1,4 @@
-import clsx from 'clsx';
+﻿import clsx from 'clsx';
 
 import { getTournamentMatchStatusTone } from '../lib/tournamentBracket';
 import type { Language, Theme, TournamentBracketMatch } from '../types';
@@ -12,7 +12,7 @@ const stageHeadings = {
     semifinal: 'Semifinals',
     final: 'Grand Final',
     thirdPlace: 'Third Place Match',
-    feedHint: 'The losing semifinalists play here.',
+    feedHint: 'Semifinal losers drop into this match.',
   },
   zh: {
     quarterfinal: {
@@ -22,7 +22,7 @@ const stageHeadings = {
     semifinal: '半决赛',
     final: '决赛',
     thirdPlace: '季军赛',
-    feedHint: '两场半决赛的败者会在这里争夺季军。',
+    feedHint: '两场半决赛败者会在这里争夺季军。',
   },
 } as const;
 
@@ -52,16 +52,16 @@ const statusLabels = {
 } as const;
 
 const toneClasses: Record<string, string> = {
-  emerald: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-400',
-  amber: 'border-amber-500/35 bg-amber-500/10 text-amber-400',
-  sky: 'border-sky-500/35 bg-sky-500/10 text-sky-400',
+  emerald: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-400',
+  amber: 'border-amber-500/30 bg-amber-500/12 text-amber-400',
+  sky: 'border-sky-500/30 bg-sky-500/12 text-sky-400',
   zinc: 'border-white/10 bg-white/5 text-zinc-300',
 };
 
-const CARD_WIDTH = 250;
-const CARD_HEIGHT = 142;
-const COLUMN_GAP = 42;
-const ROW_GAP = 16;
+const CARD_WIDTH = 176;
+const CARD_HEIGHT = 94;
+const COLUMN_GAP = 22;
+const ROW_GAP = 10;
 const MAIN_ROW_COUNT = 8;
 
 const rowMap: Record<'quarterfinal' | 'semifinal' | 'final', Record<number, number>> = {
@@ -95,7 +95,6 @@ type PlayerIdentity = {
   id: string | null;
   name: string;
   displayLabel: string;
-  helperText: string;
   avatarUrl: string;
   score: number | null;
 };
@@ -175,7 +174,7 @@ const getMatchDisplayLabel = (language: Language, match: TournamentBracketMatch)
   }
 
   if (match.stage === 'third_place') {
-    return language === 'zh' ? '季军赛' : 'Third Place Match';
+    return language === 'zh' ? '季军赛' : 'Third Place';
   }
 
   if (match.stage === 'semifinal') {
@@ -185,12 +184,12 @@ const getMatchDisplayLabel = (language: Language, match: TournamentBracketMatch)
   return language === 'zh' ? `资格赛 ${match.slot}` : `Qualifier ${match.slot}`;
 };
 
-const compactPlayerName = (name: string, maxLength = 14) => {
+const compactPlayerName = (name: string, maxLength = 8) => {
   if (name.length <= maxLength) {
     return name;
   }
 
-  return `${name.slice(0, maxLength - 3)}...`;
+  return `${name.slice(0, maxLength - 1)}…`;
 };
 
 const getPlayerIdentity = (
@@ -204,14 +203,12 @@ const getPlayerIdentity = (
   const source = slot === 1 ? match.player1Source : match.player2Source;
   const avatarUrl = slot === 1 ? match.player1AvatarUrl : match.player2AvatarUrl;
   const score = slot === 1 ? match.player1Score : match.player2Score;
-  const sourceLabel = localizeSourceLabel(language, source);
-  const resolvedName = name || sourceLabel || labels.unknown;
+  const resolvedName = name || localizeSourceLabel(language, source) || labels.unknown;
 
   return {
     id,
     name: resolvedName,
     displayLabel: compactPlayerName(resolvedName),
-    helperText: sourceLabel || resolvedName,
     avatarUrl,
     score,
   };
@@ -228,6 +225,85 @@ const getConnectorMetrics = (mainStages: readonly MainStage[], stage: MainStage,
     leftX: x,
     rightX: x + CARD_WIDTH,
   };
+};
+
+const renderPlayerRow = (
+  matchId: string,
+  player: PlayerIdentity,
+  slot: 1 | 2,
+  match: TournamentBracketMatch,
+  currentUserId: string | null,
+  theme: Theme,
+  labels: {
+    unknown: string;
+    you: string;
+    yourMatch: string;
+    waiting: string;
+    pending: string;
+    ongoing: string;
+    waiting_confirmation: string;
+    completed: string;
+    walkover: string;
+  },
+) => {
+  const isWinner = Boolean(match.winnerId && match.winnerId === player.id);
+  const isCurrent = Boolean(currentUserId && player.id === currentUserId);
+
+  return (
+    <div
+      key={`${matchId}-${slot}`}
+      title={player.name}
+      className={clsx(
+        'flex items-center gap-2 rounded-[0.95rem] border px-2.5 py-2',
+        theme === 'dark' ? 'border-white/6 bg-zinc-950/78' : 'border-zinc-100 bg-zinc-50',
+        isWinner &&
+          (theme === 'dark'
+            ? 'border-emerald-500/30 bg-emerald-500/10'
+            : 'border-emerald-300 bg-emerald-50'),
+      )}
+    >
+      {player.id ? (
+        <img
+          src={
+            player.avatarUrl ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`
+          }
+          alt={player.name}
+          className={clsx(
+            'h-7 w-7 shrink-0 rounded-full object-cover object-center',
+            isCurrent ? 'ring-2 ring-emerald-500/55 ring-offset-1 ring-offset-transparent' : '',
+          )}
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <div
+          className={clsx(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-black uppercase',
+            theme === 'dark' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500',
+          )}
+        >
+          ?
+        </div>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <div className={clsx('truncate text-[12px] font-black leading-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+          {player.displayLabel}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {isCurrent ? (
+          <span className="rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-emerald-400">
+            {labels.you}
+          </span>
+        ) : null}
+        <div className={clsx('min-w-4 text-right text-sm font-black', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
+          {typeof player.score === 'number' ? player.score : '-'}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default function TournamentBracket({
@@ -283,301 +359,161 @@ export default function TournamentBracket({
     .filter((connector): connector is { id: string; d: string } => Boolean(connector));
 
   return (
-    <div className="space-y-5">
-      <div className="overflow-x-auto pb-2">
-        <div className="min-w-max">
+    <div className="space-y-4">
+      <div className="min-w-max">
+        <div
+          className="mb-3 grid"
+          style={{
+            gridTemplateColumns: `repeat(${mainStages.length}, ${CARD_WIDTH}px)`,
+            columnGap: `${COLUMN_GAP}px`,
+          }}
+        >
+          {mainStages.map((stage) => {
+            const stageMatches = mainMatches.filter((match) => match.stage === stage);
+
+            return (
+              <div key={stage}>
+                <h3 className={clsx('text-[11px] font-black uppercase tracking-[0.2em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                  {getMainHeading(language, stage, stageMatches.length)}
+                </h3>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="relative" style={{ width: `${treeWidth}px`, height: `${treeHeight}px` }}>
+          <svg className="pointer-events-none absolute inset-0 z-0" width={treeWidth} height={treeHeight}>
+            {connectors.map((connector) => (
+              <path
+                key={connector.id}
+                d={connector.d}
+                fill="none"
+                stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(100, 116, 139, 0.24)'}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </svg>
+
           <div
-            className="mb-4 grid"
+            className="relative z-10 grid"
             style={{
               gridTemplateColumns: `repeat(${mainStages.length}, ${CARD_WIDTH}px)`,
+              gridTemplateRows: `repeat(${MAIN_ROW_COUNT}, ${CARD_HEIGHT}px)`,
               columnGap: `${COLUMN_GAP}px`,
+              rowGap: `${ROW_GAP}px`,
             }}
           >
-            {mainStages.map((stage) => {
-              const stageMatches = mainMatches.filter((match) => match.stage === stage);
+            {mainMatches.map((match) => {
+              const tone = getTournamentMatchStatusTone(match.status);
+              const isSelected = selectedMatchId === match.id;
+              const isMine = Boolean(
+                currentUserId && (match.player1Id === currentUserId || match.player2Id === currentUserId),
+              );
+              const player1 = getPlayerIdentity(language, match, 1, labels);
+              const player2 = getPlayerIdentity(language, match, 2, labels);
+              const gridColumn = mainStages.indexOf(match.stage) + 1;
+              const gridRow = rowMap[match.stage][match.slot];
+              const displayLabel = getMatchDisplayLabel(language, match);
 
               return (
-                <div key={stage}>
-                  <h3
-                    className={clsx(
-                      'text-xs font-black uppercase tracking-[0.2em]',
-                      theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500',
-                    )}
-                  >
-                    {getMainHeading(language, stage, stageMatches.length)}
-                  </h3>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="relative" style={{ width: `${treeWidth}px`, height: `${treeHeight}px` }}>
-            <svg className="pointer-events-none absolute inset-0 z-0" width={treeWidth} height={treeHeight}>
-              {connectors.map((connector) => (
-                <path
-                  key={connector.id}
-                  d={connector.d}
-                  fill="none"
-                  stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.34)' : 'rgba(100, 116, 139, 0.28)'}
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-            </svg>
-
-            <div
-              className="relative z-10 grid"
-              style={{
-                gridTemplateColumns: `repeat(${mainStages.length}, ${CARD_WIDTH}px)`,
-                gridTemplateRows: `repeat(${MAIN_ROW_COUNT}, ${CARD_HEIGHT}px)`,
-                columnGap: `${COLUMN_GAP}px`,
-                rowGap: `${ROW_GAP}px`,
-              }}
-            >
-              {mainMatches.map((match) => {
-                const tone = getTournamentMatchStatusTone(match.status);
-                const isSelected = selectedMatchId === match.id;
-                const isMine = Boolean(
-                  currentUserId &&
-                    (match.player1Id === currentUserId || match.player2Id === currentUserId),
-                );
-                const player1 = getPlayerIdentity(language, match, 1, labels);
-                const player2 = getPlayerIdentity(language, match, 2, labels);
-                const gridColumn = mainStages.indexOf(match.stage) + 1;
-                const gridRow = rowMap[match.stage][match.slot];
-                const displayLabel = getMatchDisplayLabel(language, match);
-
-                return (
-                  <button
-                    key={match.id}
-                    type="button"
-                    onClick={() => onSelectMatch(match)}
-                    style={{ gridColumn, gridRow }}
-                    className={clsx(
-                      'h-[142px] w-[250px] overflow-hidden rounded-[1.55rem] border p-3.5 text-left transition-all shadow-[0_16px_30px_rgba(2,6,23,0.08)]',
-                      theme === 'dark'
-                        ? 'border-white/8 bg-zinc-900/92 hover:bg-zinc-900'
-                        : 'border-zinc-200 bg-white hover:bg-zinc-50',
-                      isSelected &&
-                        (theme === 'dark'
-                          ? 'border-emerald-500/40 ring-2 ring-emerald-500/55'
-                          : 'border-emerald-400 ring-2 ring-emerald-500/30'),
-                    )}
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div
-                          className={clsx(
-                            'truncate text-[10px] font-black uppercase tracking-[0.18em]',
-                            theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500',
-                          )}
-                        >
-                          {displayLabel}
-                        </div>
-                        <div
-                          className={clsx(
-                            'mt-1 text-[10px] font-semibold',
-                            theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500',
-                          )}
-                        >
-                          BO{match.bestOf}
-                        </div>
+                <button
+                  key={match.id}
+                  type="button"
+                  onClick={() => onSelectMatch(match)}
+                  style={{ gridColumn, gridRow }}
+                  className={clsx(
+                    'h-[94px] w-[176px] overflow-hidden rounded-[1.35rem] border p-2.5 text-left transition-all shadow-[0_12px_26px_rgba(2,6,23,0.08)]',
+                    theme === 'dark' ? 'border-white/8 bg-zinc-900/92 hover:bg-zinc-900' : 'border-zinc-200 bg-white hover:bg-zinc-50',
+                    isSelected &&
+                      (theme === 'dark'
+                        ? 'border-emerald-500/40 ring-2 ring-emerald-500/45'
+                        : 'border-emerald-400 ring-2 ring-emerald-500/25'),
+                  )}
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className={clsx('truncate text-[9px] font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                        {displayLabel}
                       </div>
+                      <div className={clsx('mt-0.5 text-[9px] font-semibold', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+                        BO{match.bestOf}
+                      </div>
+                    </div>
 
-                      <div
-                        className={clsx(
-                          'shrink-0 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em]',
-                          toneClasses[tone],
-                        )}
-                      >
+                    <div className="flex items-center gap-1.5">
+                      {isMine ? <span className="h-2 w-2 rounded-full bg-emerald-500" /> : null}
+                      <div className={clsx('shrink-0 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.16em]', toneClasses[tone])}>
                         {labels[match.status]}
                       </div>
                     </div>
+                  </div>
 
-                    <div className="space-y-2.5">
-                      {[player1, player2].map((player, index) => {
-                        const slot = index === 0 ? 1 : 2;
-                        const isWinner = Boolean(match.winnerId && match.winnerId === player.id);
-                        const isCurrent = Boolean(currentUserId && player.id === currentUserId);
-
-                        return (
-                          <div
-                            key={`${match.id}-${slot}`}
-                            title={player.name}
-                            className={clsx(
-                              'flex items-center justify-between gap-2 rounded-2xl border px-3 py-2.5',
-                              theme === 'dark' ? 'border-white/6 bg-zinc-950/80' : 'border-zinc-100 bg-zinc-50',
-                              isWinner &&
-                                (theme === 'dark'
-                                  ? 'border-emerald-500/35 bg-emerald-500/10'
-                                  : 'border-emerald-300 bg-emerald-50'),
-                            )}
-                          >
-                            <div className="flex min-w-0 items-center gap-2.5">
-                              {player.id ? (
-                                <img
-                                  src={
-                                    player.avatarUrl ||
-                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`
-                                  }
-                                  alt={player.name}
-                                  className="h-8 w-8 shrink-0 rounded-full object-cover object-center"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <div
-                                  className={clsx(
-                                    'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-black uppercase',
-                                    theme === 'dark' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500',
-                                  )}
-                                >
-                                  ?
-                                </div>
-                              )}
-
-                              <div className="min-w-0">
-                                <div
-                                  className={clsx(
-                                    'truncate text-[14px] font-black leading-none',
-                                    theme === 'dark' ? 'text-white' : 'text-zinc-900',
-                                  )}
-                                >
-                                  {player.displayLabel}
-                                </div>
-                                <div
-                                  className={clsx(
-                                    'mt-1 truncate text-[10px]',
-                                    theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500',
-                                  )}
-                                >
-                                  {player.helperText}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex shrink-0 items-center gap-2">
-                              {isCurrent ? (
-                                <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-500">
-                                  {labels.you}
-                                </span>
-                              ) : null}
-                              <div
-                                className={clsx(
-                                  'min-w-5 text-right text-lg font-black',
-                                  theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700',
-                                )}
-                              >
-                                {typeof player.score === 'number' ? player.score : '-'}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {isMine ? (
-                      <div className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-500">
-                        {labels.yourMatch}
-                      </div>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
+                  <div className="space-y-1.5">
+                    {renderPlayerRow(match.id, player1, 1, match, currentUserId, theme, labels)}
+                    {renderPlayerRow(match.id, player2, 2, match, currentUserId, theme, labels)}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
       {thirdPlaceMatch ? (
-        <section
-          className={clsx(
-            'rounded-[1.8rem] border p-4 sm:p-5',
-            theme === 'dark' ? 'border-white/8 bg-zinc-900/70' : 'border-zinc-200 bg-white shadow-sm',
-          )}
-        >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <section className={clsx('rounded-[1.55rem] border p-3.5 sm:p-4', theme === 'dark' ? 'border-white/8 bg-zinc-900/68' : 'border-zinc-200 bg-white shadow-sm')}>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3
-                className={clsx(
-                  'text-sm font-black uppercase tracking-[0.18em]',
-                  theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500',
-                )}
-              >
+              <h3 className={clsx('text-[11px] font-black uppercase tracking-[0.2em]', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
                 {stageHeadings[language].thirdPlace}
               </h3>
-              <p className={clsx('mt-1 text-sm', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+              <p className={clsx('mt-1 text-xs', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
                 {stageHeadings[language].feedHint}
               </p>
             </div>
-            <div
-              className={clsx(
-                'rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]',
-                toneClasses[getTournamentMatchStatusTone(thirdPlaceMatch.status)],
-              )}
-            >
+            <div className={clsx('rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em]', toneClasses[getTournamentMatchStatusTone(thirdPlaceMatch.status)])}>
               {labels[thirdPlaceMatch.status]}
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            {([1, 2] as const).map((slot) => {
-              const player = getPlayerIdentity(language, thirdPlaceMatch, slot, labels);
-              const isWinner = Boolean(thirdPlaceMatch.winnerId && thirdPlaceMatch.winnerId === player.id);
-
-              return (
-                <div
-                  key={`third-place-${slot}`}
-                  className={clsx(
-                    'flex items-center justify-between gap-3 rounded-2xl border px-4 py-3',
-                    theme === 'dark' ? 'border-white/6 bg-zinc-950/75' : 'border-zinc-100 bg-zinc-50',
-                    isWinner &&
-                      (theme === 'dark'
-                        ? 'border-emerald-500/35 bg-emerald-500/10'
-                        : 'border-emerald-300 bg-emerald-50'),
-                  )}
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    {player.id ? (
-                      <img
-                        src={
-                          player.avatarUrl ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=random`
-                        }
-                        alt={player.name}
-                        className="h-10 w-10 shrink-0 rounded-full object-cover object-center"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div
-                        className={clsx(
-                          'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-black uppercase',
-                          theme === 'dark' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500',
-                        )}
-                      >
-                        ?
-                      </div>
-                    )}
-
-                    <div className="min-w-0">
-                      <div className={clsx('truncate font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                        {player.name}
-                      </div>
-                      <div className={clsx('truncate text-xs', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                        {player.helperText}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={clsx('shrink-0 text-xl font-black', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
-                    {typeof player.score === 'number' ? player.score : '-'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => onSelectMatch(thirdPlaceMatch)}
+            className={clsx(
+              'w-full rounded-[1.3rem] border p-3 text-left transition-all',
+              theme === 'dark' ? 'border-white/8 bg-zinc-950/76 hover:bg-zinc-950' : 'border-zinc-200 bg-zinc-50 hover:bg-white',
+              selectedMatchId === thirdPlaceMatch.id &&
+                (theme === 'dark'
+                  ? 'border-emerald-500/40 ring-2 ring-emerald-500/45'
+                  : 'border-emerald-400 ring-2 ring-emerald-500/25'),
+            )}
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className={clsx('text-[10px] font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                {getMatchDisplayLabel(language, thirdPlaceMatch)}
+              </div>
+              {currentUserId && (thirdPlaceMatch.player1Id === currentUserId || thirdPlaceMatch.player2Id === currentUserId) ? (
+                <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-emerald-400">
+                  {labels.yourMatch}
+                </span>
+              ) : null}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {([1, 2] as const).map((slot) => renderPlayerRow(
+                thirdPlaceMatch.id,
+                getPlayerIdentity(language, thirdPlaceMatch, slot, labels),
+                slot,
+                thirdPlaceMatch,
+                currentUserId,
+                theme,
+                labels,
+              ))}
+            </div>
+          </button>
         </section>
       ) : null}
     </div>
   );
 }
+

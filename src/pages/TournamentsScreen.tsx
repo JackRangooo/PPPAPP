@@ -5,11 +5,11 @@ import clsx from 'clsx';
 
 import { useAuth } from '../App';
 import TournamentBracketDialog from '../components/TournamentBracketDialog';
-import { cancelTournament, createTournament, createTournamentMatchComment, endTournament, getReadableErrorMessage, listProfiles, listTournamentMatchComments, listTournaments, registerForTournament, startTournament } from '../lib/api';
-import { createTournamentBracket, sortTournamentTimeline } from '../lib/tournamentBracket';
+import { cancelTournament, createTournament, createTournamentMatchComment, endTournament, getReadableErrorMessage, listProfiles, listTournamentMatchComments, listTournaments, registerForTournament, saveTournamentProgress, startTournament } from '../lib/api';
+import { adminResolveTournamentMatchScore, createCompletionTimeline, createTournamentBracket, getFinalizedTournamentState, sortTournamentTimeline } from '../lib/tournamentBracket';
 import { buildTournamentPreviewCard, upsertTournament } from '../lib/tournamentPresentation';
 import { subscribeToTable } from '../lib/supabase';
-import type { Tournament, TournamentMatchComment, UserProfile } from '../types';
+import type { Tournament, TournamentBracketMatch, TournamentMatchComment, UserProfile } from '../types';
 import { useTranslation } from '../i18n';
 
 type TournamentLane = 'registration' | 'ongoing' | 'preview';
@@ -29,6 +29,10 @@ const copy = {
     startTournament: 'Generate Bracket',
     cancelTournament: 'Cancel Tournament',
     forceSettle: 'Force Settle',
+    adminScoreAction: 'Admin Score',
+    adminScoreTitle: 'Admin Match Result',
+    adminScoreHint: 'Select a bracket match and settle it directly from the viewer.',
+    adminScoreSubmitLabel: 'Save Result',
     noRegistration: 'No professional events are collecting signups right now.',
     noOngoing: 'No professional events are live right now.',
     previewTitle: 'Next Week Professional Cup',
@@ -56,6 +60,7 @@ const copy = {
     startSuccess: 'Bracket generated.',
     cancelSuccess: 'Professional event cancelled.',
     settleSuccess: 'Professional event settled.',
+    adminScoreSuccess: 'Bracket result saved.',
     commentSuccess: 'Comment posted.',
     cancelConfirm: 'Cancel this professional event? This cannot be undone.',
     startConfirm: 'Generate the bracket and lock registration?',
@@ -79,6 +84,10 @@ const copy = {
     startTournament: '生成对阵表',
     cancelTournament: '取消锦标赛',
     forceSettle: '紧急结算',
+    adminScoreAction: '管理员录分',
+    adminScoreTitle: '管理员直接结算',
+    adminScoreHint: '先在对阵表里选中比赛，再由管理员直接录入最终比分。',
+    adminScoreSubmitLabel: '录入并结算',
     noRegistration: '当前没有正在报名的职业赛。',
     noOngoing: '当前没有正在进行的职业赛。',
     previewTitle: '下周职业赛预览',
@@ -106,6 +115,7 @@ const copy = {
     startSuccess: '对阵表已生成。',
     cancelSuccess: '职业赛已取消。',
     settleSuccess: '职业赛已完成结算。',
+    adminScoreSuccess: '已从对阵表直接结算这场比赛。',
     commentSuccess: '评论已发布。',
     cancelConfirm: '确认取消这场职业赛吗？此操作无法撤销。',
     startConfirm: '确认生成对阵表并关闭报名吗？',
@@ -214,6 +224,31 @@ export default function TournamentsScreen() {
     }
   };
 
+  const persistTournamentUpdate = async (
+    tournament: Tournament,
+    match: TournamentBracketMatch,
+    nextBracket: Tournament['bracket'],
+    nextTimeline: Tournament['timeline'],
+  ) => {
+    const finalized = getFinalizedTournamentState(nextBracket);
+    const completionTimeline =
+      finalized.status === 'completed' ? createCompletionTimeline(tournament, nextBracket) : [];
+
+    const updated = await saveTournamentProgress({
+      tournamentId: tournament.id,
+      matchId: match.id,
+      bracket: nextBracket,
+      timeline: sortTournamentTimeline([...completionTimeline, ...nextTimeline]),
+      status: finalized.status,
+      winnerId: finalized.winnerId,
+      runnerUpId: finalized.runnerUpId,
+      thirdPlaceId: finalized.thirdPlaceId,
+    });
+
+    replaceTournament(updated);
+    return updated;
+  };
+
   const handleCreateTournament = async () => runMutation(ui.createTournament, async () => {
     const created = await createTournament();
     replaceTournament(created);
@@ -255,6 +290,42 @@ export default function TournamentsScreen() {
     replaceTournament(await endTournament(tournament.id));
     window.alert(ui.settleSuccess);
   });
+
+  const handleAdminSubmitScore = async (
+    matchId: string,
+    player1Score: number,
+    player2Score: number,
+  ) => {
+    if (!featuredTournament || !canManageTournament) {
+      return;
+    }
+
+    const match = featuredTournament.bracket.matches.find((currentMatch) => currentMatch.id === matchId);
+    if (!match) {
+      return;
+    }
+
+    await runMutation(ui.adminScoreAction, async () => {
+      const result = adminResolveTournamentMatchScore(
+        featuredTournament,
+        featuredTournament.bracket,
+        matchId,
+        player1Score,
+        player2Score,
+      );
+
+      const updated = await persistTournamentUpdate(
+        featuredTournament,
+        match,
+        result.bracket,
+        [...result.timeline, ...featuredTournament.timeline],
+      );
+
+      setSelectedTournamentId(updated.id);
+      setSelectedMatchId(matchId);
+      window.alert(ui.adminScoreSuccess);
+    });
+  };
 
   const handlePostComment = async () => {
     if (!featuredTournament || !selectedMatch || !commentBody.trim()) return;
@@ -403,8 +474,9 @@ export default function TournamentsScreen() {
         {pastTournaments.length > 0 ? <div className="space-y-3">{pastTournaments.map((tournament) => <div key={tournament.id} className={clsx('flex items-center justify-between rounded-2xl border p-4 transition-colors', theme === 'dark' ? 'border-white/5 bg-zinc-900/30 hover:bg-zinc-800/30' : 'border-zinc-200 bg-white hover:bg-zinc-50 shadow-sm')}><div><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{tournament.name}</div><div className="mt-1 text-xs font-medium text-zinc-500">{tournament.participants.length} {t('play.participants')}</div></div><ChevronRight className="h-5 w-5 text-zinc-400" /></div>)}</div> : <div className="rounded-2xl border border-dashed border-zinc-300/40 px-4 py-6 text-center text-sm font-medium text-zinc-500">{t('play.noPastTournaments')}</div>}
       </section>
 
-      <TournamentBracketDialog open={bracketOpen} theme={theme} language={language} tournament={featuredTournament} currentUserId={userProfile?.uid ?? null} selectedMatch={selectedMatch} emptyLabel={ui.noBracket} cancelledLabel={ui.tournamentCancelled} title={ui.bracketTitle} closeLabel={ui.closeBracket} onClose={() => setBracketOpen(false)} onSelectMatch={(match) => setSelectedMatchId(match.id)} />
+      <TournamentBracketDialog open={bracketOpen} theme={theme} language={language} tournament={featuredTournament} currentUserId={userProfile?.uid ?? null} selectedMatch={selectedMatch} emptyLabel={ui.noBracket} cancelledLabel={ui.tournamentCancelled} title={ui.bracketTitle} closeLabel={ui.closeBracket} canManageScores={canManageTournament} adminScoreBusy={busy} adminScoreTitle={ui.adminScoreTitle} adminScoreHint={ui.adminScoreHint} adminScoreSubmitLabel={ui.adminScoreSubmitLabel} onClose={() => setBracketOpen(false)} onSelectMatch={(match) => setSelectedMatchId(match.id)} onAdminSubmitScore={(matchId, player1Score, player2Score) => void handleAdminSubmitScore(matchId, player1Score, player2Score)} />
     </div>
   );
 }
+
 

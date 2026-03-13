@@ -14,6 +14,12 @@ type SubmitTournamentScoreResult = {
   timeline: TournamentTimelineEvent[];
 };
 
+type AdminResolveTournamentScoreResult = {
+  bracket: TournamentBracket;
+  result: 'completed';
+  timeline: TournamentTimelineEvent[];
+};
+
 type ForfeitTournamentMatchResult = {
   bracket: TournamentBracket;
   timeline: TournamentTimelineEvent[];
@@ -613,6 +619,51 @@ export const submitTournamentMatchScore = (
   return {
     bracket: nextBracket,
     result: 'reset',
+    timeline: nextTimeline,
+  };
+};
+
+export const adminResolveTournamentMatchScore = (
+  tournament: Tournament,
+  bracket: TournamentBracket,
+  matchId: string,
+  player1Score: number,
+  player2Score: number,
+): AdminResolveTournamentScoreResult => {
+  const nextBracket = cloneBracket(bracket);
+  const nextTimeline: TournamentTimelineEvent[] = [];
+  const match = nextBracket.matches.find((current) => current.id === matchId);
+
+  if (!match) {
+    throw new Error('Tournament match not found.');
+  }
+
+  if (match.status === 'completed' || match.status === 'walkover') {
+    throw new Error('This match is already finished.');
+  }
+
+  if (!match.player1Id || !match.player2Id) {
+    throw new Error('Both players must be assigned before scoring this match.');
+  }
+
+  if (!validateScore(match.bestOf, player1Score, player2Score)) {
+    throw new Error('Enter the final score for both players. Scores cannot be tied.');
+  }
+
+  match.player1Ready = true;
+  match.player2Ready = true;
+  match.player1Confirmed = true;
+  match.player2Confirmed = true;
+  match.player1Score = player1Score;
+  match.player2Score = player2Score;
+
+  const winnerSlot: 1 | 2 = player1Score > player2Score ? 1 : 2;
+  finalizeMatch(tournament, nextBracket, match.id, winnerSlot, 'normal', nextTimeline);
+  autoResolveWalkovers(tournament, nextBracket, nextTimeline);
+
+  return {
+    bracket: nextBracket,
+    result: 'completed',
     timeline: nextTimeline,
   };
 };
