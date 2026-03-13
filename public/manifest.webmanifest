@@ -7,8 +7,8 @@
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
-  "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
+  "display": "standalone",
+  "display_override": ["standalone"],
   "background_color": "#09090b",
   "theme_color": "#09090b",
   "categories": ["sports", "productivity"],
@@ -37,3 +37,4 @@
     }
   ]
 }
+

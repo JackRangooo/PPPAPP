@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pingproprivate-shell-v2';
+const CACHE_NAME = 'pingproprivate-shell-v3';
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',
@@ -91,3 +91,4 @@ self.addEventListener('fetch', (event) => {
     })(),
   );
 });
+

@@ -603,20 +603,20 @@ export default function GlobalMessageQueue() {
     <>
       <div
         className={clsx(
-          'fixed right-3 z-[130] md:bottom-8 md:right-7',
-          'bottom-[calc(env(safe-area-inset-bottom)+7.75rem)]',
+          'fixed right-4 z-[130] md:bottom-8 md:right-8',
+          'bottom-[calc(env(safe-area-inset-bottom)+7.25rem)]',
         )}
       >
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
           className={clsx(
-            'relative flex h-[4.05rem] w-[4.05rem] items-center justify-center overflow-hidden rounded-[1.7rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5',
+            'relative flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5',
             tones.shell,
           )}
         >
           <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full opacity-90 blur-2xl', tones.shine)} />
-          <span className={clsx('pointer-events-none absolute inset-0 rounded-[1.7rem]', tones.glow)} />
+          <span className={clsx('pointer-events-none absolute inset-0 rounded-[1.8rem]', tones.glow)} />
           <MessageSquareMore className="relative z-10 h-6 w-6" />
         </button>
         {queueItems.length > 0 ? (
@@ -633,8 +633,8 @@ export default function GlobalMessageQueue() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             className={clsx(
-              'fixed right-3 z-[129] flex h-[min(34rem,calc(100vh-11rem))] w-[min(92vw,420px)] flex-col overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-7',
-              'bottom-[calc(env(safe-area-inset-bottom)+12.6rem)]',
+              'fixed right-4 z-[129] flex h-[min(34rem,calc(100vh-10.5rem))] w-[min(92vw,420px)] flex-col overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-8',
+              'bottom-[calc(env(safe-area-inset-bottom)+12.2rem)]',
               tones.panel,
             )}
           >
@@ -904,6 +904,7 @@ export default function GlobalMessageQueue() {
     </>
   );
 }
+
 
 
 
