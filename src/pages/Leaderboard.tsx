@@ -125,22 +125,20 @@ export default function Leaderboard() {
     return <span className={clsx('w-6 text-center text-lg font-bold', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{index + 1}</span>;
   };
 
-  const compact = scrollTop > 18;
-  const hidden = scrollTop > 210;
+  const hidden = scrollTop > 150;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
       <header
         className={clsx(
-          '-mx-4 -mt-4 sticky top-0 z-40 pb-1 transition-all duration-300 md:mx-0 md:mt-0',
-          hidden ? 'pointer-events-none -translate-y-[calc(100%+0.75rem)] opacity-0' : 'translate-y-0 opacity-100',
+          '-mx-4 -mt-4 sticky top-0 z-40 pb-1 transition-transform duration-300 md:mx-0 md:mt-0',
+          hidden ? 'pointer-events-none -translate-y-[calc(100%+0.75rem)]' : 'translate-y-0',
         )}
       >
         <div
           className={clsx(
-            'relative overflow-hidden border px-4 backdrop-blur-[24px] backdrop-saturate-150 transition-all duration-300 md:rounded-[2rem] md:border',
+            'relative overflow-hidden border px-4 pb-3.5 backdrop-blur-[24px] backdrop-saturate-150 md:rounded-[2rem] md:border',
             'rounded-b-[1.45rem] border-x-0 border-t-0',
-            compact ? 'pb-2.5' : 'pb-3.5',
             theme === 'dark'
               ? 'border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.88),rgba(10,13,21,0.76))] shadow-[0_14px_30px_rgba(2,6,23,0.22),inset_0_1px_0_rgba(255,255,255,0.12)]'
               : 'border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(244,247,255,0.8))] shadow-[0_12px_24px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]',
@@ -157,8 +155,8 @@ export default function Leaderboard() {
           />
 
           <div className="relative">
-            <div className="mb-2.5">
-              <h1 className={clsx('mb-0.5 flex items-center gap-2.5 font-bold tracking-tight', compact ? 'text-[1.75rem]' : 'text-[2rem]', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+            <div className="mb-3">
+              <h1 className={clsx('mb-0.5 flex items-center gap-2.5 text-[2rem] font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                 <Award className="h-7 w-7 text-emerald-500" />
                 {t('nav.leaderboard')}
               </h1>
@@ -167,7 +165,7 @@ export default function Leaderboard() {
               </p>
             </div>
 
-            <div className={clsx('mb-2 overflow-hidden transition-all duration-300', compact ? 'max-h-11 opacity-100' : 'max-h-14 opacity-100')}>
+            <div className="mb-3">
               <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} />
             </div>
 

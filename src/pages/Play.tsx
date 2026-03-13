@@ -31,23 +31,20 @@ export default function Play() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const compact = scrollTop > 18;
-  const hideSearch = scrollTop > 64;
-  const hidden = scrollTop > 210;
+  const hidden = scrollTop > 150;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
       <header
         className={clsx(
-          '-mx-4 -mt-4 sticky top-0 z-40 pb-1 transition-all duration-300 md:mx-0 md:mt-0',
-          hidden ? 'pointer-events-none -translate-y-[calc(100%+0.75rem)] opacity-0' : 'translate-y-0 opacity-100',
+          '-mx-4 -mt-4 sticky top-0 z-40 pb-1 transition-transform duration-300 md:mx-0 md:mt-0',
+          hidden ? 'pointer-events-none -translate-y-[calc(100%+0.75rem)]' : 'translate-y-0',
         )}
       >
         <div
           className={clsx(
-            'relative overflow-hidden border px-4 backdrop-blur-[24px] backdrop-saturate-150 transition-all duration-300 md:rounded-[2rem] md:border',
+            'relative overflow-hidden border px-4 pb-3.5 backdrop-blur-[24px] backdrop-saturate-150 md:rounded-[2rem] md:border',
             'rounded-b-[1.45rem] border-x-0 border-t-0',
-            compact ? 'pb-2.5' : 'pb-3.5',
             theme === 'dark'
               ? 'border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.88),rgba(10,13,21,0.76))] shadow-[0_14px_30px_rgba(2,6,23,0.22),inset_0_1px_0_rgba(255,255,255,0.12)]'
               : 'border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(244,247,255,0.8))] shadow-[0_12px_24px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]',
@@ -64,9 +61,9 @@ export default function Play() {
           />
 
           <div className="relative">
-            <div className={clsx('mb-2.5 flex items-end justify-between gap-4', compact ? 'items-center' : 'items-end')}>
+            <div className="mb-3 flex items-end justify-between gap-4">
               <div>
-                <h1 className={clsx(compact ? 'text-[1.75rem]' : 'text-[2rem]', 'font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                <h1 className={clsx('text-[2rem] font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
                   {t('nav.play')}
                 </h1>
                 <p className={clsx('mt-0.5 text-xs font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
@@ -75,12 +72,7 @@ export default function Play() {
               </div>
             </div>
 
-            <div
-              className={clsx(
-                'overflow-hidden transition-all duration-300',
-                compact ? 'mb-2 max-h-11 opacity-100' : 'mb-3 max-h-14 opacity-100',
-              )}
-            >
+            <div className="mb-3">
               <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} />
             </div>
 
@@ -130,32 +122,25 @@ export default function Play() {
             </div>
 
             {activeTab === 'casual' ? (
-              <div
-                className={clsx(
-                  'overflow-hidden transition-all duration-300',
-                  hideSearch ? 'mt-0 max-h-0 opacity-0' : 'mt-2.5 max-h-24 opacity-100',
-                )}
-              >
-                <div className="space-y-2">
-                  <div className={clsx('flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-                    <Search className="h-4 w-4 text-emerald-500" />
-                    {t('play.findOpponents')}
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                    <input
-                      type="text"
-                      placeholder={t('play.searchPlaceholder')}
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                      className={clsx(
-                        'w-full rounded-2xl border py-3 pl-11 pr-4 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40',
-                        theme === 'dark'
-                          ? 'border-white/10 bg-zinc-950/55 text-white placeholder:text-zinc-600'
-                          : 'border-zinc-200 bg-white/85 text-zinc-900 placeholder:text-zinc-400 shadow-sm',
-                      )}
-                    />
-                  </div>
+              <div className="mt-3 space-y-2">
+                <div className={clsx('flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                  <Search className="h-4 w-4 text-emerald-500" />
+                  {t('play.findOpponents')}
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder={t('play.searchPlaceholder')}
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className={clsx(
+                      'w-full rounded-2xl border py-3 pl-11 pr-4 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40',
+                      theme === 'dark'
+                        ? 'border-white/10 bg-zinc-950/55 text-white placeholder:text-zinc-600'
+                        : 'border-zinc-200 bg-white/85 text-zinc-900 placeholder:text-zinc-400 shadow-sm',
+                    )}
+                  />
                 </div>
               </div>
             ) : null}
