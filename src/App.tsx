@@ -310,11 +310,11 @@ const MissingProfileState = () => {
           <ShieldAlert className="w-8 h-8" />
         </div>
         <h1 className={clsx('text-2xl font-bold mb-3', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-          {language === 'zh' ? '资料暂时不可用' : 'Profile unavailable'}
+          {language === 'zh' ? 'Profile unavailable' : 'Profile unavailable'}
         </h1>
         <p className={clsx('text-sm font-medium mb-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
           {language === 'zh'
-            ? '我们暂时无法恢复你的玩家资料。请先退出登录，再重新登录以重新同步账号。'
+            ? 'We could not restore your player profile. Sign out once and sign back in to resync your account.'
             : 'We could not restore your player profile. Sign out once and sign back in to resync your account.'}
         </p>
         <button
@@ -323,7 +323,7 @@ const MissingProfileState = () => {
           }}
           className="w-full rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 font-bold transition-colors"
         >
-          {language === 'zh' ? '返回登录' : 'Back to sign in'}
+          {language === 'zh' ? 'Back to sign in' : 'Back to sign in'}
         </button>
       </div>
     </div>

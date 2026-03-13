@@ -37,78 +37,16 @@ import { useTranslation } from '../i18n';
 
 const ACTIVITY_MATCH_LIMIT = 1000;
 
-const localizeBracketLabel = (language: 'en' | 'zh', value: string) => {
-  if (language === 'en') {
-    return value;
-  }
-
-  if (value === 'Grand Final') return '决赛';
-  if (value === 'Third Place Match') return '季军赛';
-
-  const quarter = value.match(/^Quarterfinal\s+(\d+)$/i);
-  if (quarter) return `四分之一决赛 ${quarter[1]}`;
-
-  const qualifier = value.match(/^(Qualifier|Play-In)\s+(\d+)$/i);
-  if (qualifier) return `资格赛 ${qualifier[2]}`;
-
-  const semifinal = value.match(/^Semifinal\s+(\d+)$/i);
-  if (semifinal) return `半决赛 ${semifinal[1]}`;
-
+const localizeBracketLabel = (_language: 'en' | 'zh', value: string) => {
   return value;
 };
 
-const localizeTimelineTitle = (language: 'en' | 'zh', title: string) => {
-  if (language === 'en') {
-    return title;
-  }
-
-  let match = title.match(/^(.+) is ready$/);
-  if (match) return `${localizeBracketLabel(language, match[1])} 已就绪`;
-
-  match = title.match(/^(.+) is live$/);
-  if (match) return `${localizeBracketLabel(language, match[1])} 已开赛`;
-
-  match = title.match(/^(.+) advanced by walkover$/);
-  if (match) return `${localizeBracketLabel(language, match[1])} 轮空晋级`;
-
-  match = title.match(/^(.+) won (.+)$/);
-  if (match) return `${match[1]} 赢下 ${localizeBracketLabel(language, match[2])}`;
-
-  match = title.match(/^(.+) was cancelled$/);
-  if (match) return `${match[1]} 已取消`;
-
-  return localizeBracketLabel(language, title);
+const localizeTimelineTitle = (_language: 'en' | 'zh', title: string) => {
+  return title;
 };
 
-const localizeTimelineDescription = (language: 'en' | 'zh', description: string) => {
-  if (language === 'en') {
-    return description;
-  }
-
-  let match = description.match(/^(\d+) players entered a (\d+)-slot bracket\.$/);
-  if (match) return `${match[1]} 名球员进入了 ${match[2]} 人淘汰赛对阵。`;
-
-  match = description.match(/^(.+) and (.+) are ready to play\.$/);
-  if (match) return `${match[1]} 和 ${match[2]} 都已就绪，可以开始比赛。`;
-
-  match = description.match(/^(.+) moved on from (.+) without playing\.$/);
-  if (match) return `${match[1]} 无需比赛，直接从 ${localizeBracketLabel(language, match[2])} 晋级。`;
-
-  match = description.match(/^(.+) beat (.+) in (.+)\.$/);
-  if (match) return `${match[1]} 在 ${localizeBracketLabel(language, match[3])} 中击败了 ${match[2]}。`;
-
-  if (description === 'The root admin closed this event before it finished.') {
-    return 'root 管理员在赛事结束前关闭了这场比赛。';
-  }
-
-  match = description.match(/^(.+) is the new champion, and (.+) claimed third place\.$/);
-  if (match) return `${match[1]} 获得冠军，${match[2]} 获得季军。`;
-
-  if (description === 'Bracket seeding is locked and matches are live.') {
-    return '对阵已经锁定，比赛正式开始。';
-  }
-
-  return localizeBracketLabel(language, description);
+const localizeTimelineDescription = (_language: 'en' | 'zh', description: string) => {
+  return description;
 };
 
 const formatRelativeTime = (language: 'en' | 'zh', value: string) =>
@@ -232,12 +170,12 @@ export default function Dashboard() {
   const adminCopy =
     language === 'zh'
       ? {
-          deleteFeed: '删除动态',
-          deleteFeedConfirm: '确认删除这条赛事动态吗？',
-          deleteFeedFailed: '删除赛事动态失败。',
-          deleteMatch: '删除比赛',
-          deleteMatchConfirm: '确认删除这条最近比赛记录吗？',
-          deleteMatchFailed: '删除最近比赛失败。',
+          deleteFeed: 'Delete Feed',
+          deleteFeedConfirm: 'Delete this tournament feed item?',
+          deleteFeedFailed: 'Failed to delete this feed item.',
+          deleteMatch: 'Delete Match',
+          deleteMatchConfirm: 'Delete this recent match?',
+          deleteMatchFailed: 'Failed to delete this recent match.',
         }
       : {
           deleteFeed: 'Delete Feed',
@@ -248,11 +186,8 @@ export default function Dashboard() {
           deleteMatchFailed: 'Failed to delete this recent match.',
         };
 
-  const feedTitle = language === 'zh' ? `${sportLabel}赛事动态` : `${sportLabel} Tournament Feed`;
-  const feedEmpty =
-    language === 'zh'
-      ? '开赛、晋级和夺冠动态会显示在这里。'
-      : 'Bracket starts, advances, and title wins will show up here.';
+  const feedTitle = `${sportLabel} Tournament Feed`;
+  const feedEmpty = 'Bracket starts, advances, and title wins will show up here.';
 
   const refreshMatches = async () => {
     setActivityMatches(await listUserRecentMatches(userProfile.uid, ACTIVITY_MATCH_LIMIT, sport));
@@ -569,7 +504,7 @@ export default function Dashboard() {
                             {opponentName}
                           </div>
                           <div className="text-xs font-medium text-zinc-500">
-                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} · {formatRelativeTime(language, match.createdAt)}
+                            {match.type === 'casual' ? t('play.casual') : t('play.ranked')} 路 {formatRelativeTime(language, match.createdAt)}
                           </div>
                         </div>
                       </div>

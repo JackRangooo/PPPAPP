@@ -72,59 +72,59 @@ const copy = {
     cardSummaryOngoing: 'Bracket is live. Open the viewer to track advancement.',
   },
   zh: {
-    hub: '职业赛大厅',
-    hubSubtitle: '系统职业赛和管理员职业赛可以同时存在，先选分区，再进入对应赛事。',
-    registrationTab: '报名中',
-    ongoingTab: '开展中',
-    previewTab: '未开始',
-    registrationHint: '当前可报名',
-    ongoingHint: '对阵进行中',
-    previewHint: '下周预览',
-    createTournament: '发布管理员职业赛',
-    createTournamentBlocked: '当前已经有管理员职业赛在进行中。',
-    startTournament: '生成对阵表',
-    cancelTournament: '取消锦标赛',
-    forceSettle: '紧急结算',
-    adminScoreAction: '管理员录分',
-    adminScoreTitle: '管理员直接结算',
-    adminScoreHint: '先在对阵表里选中比赛，再由管理员直接录入最终比分。',
-    adminScoreSubmitLabel: '录入并结算',
-    noRegistration: '当前没有正在报名的职业赛。',
-    noOngoing: '当前没有正在进行的职业赛。',
-    previewTitle: '下周职业赛预览',
-    previewDescription: '这里会展示下一周系统职业赛的预览信息。',
-    previewBadge: '预览',
-    systemSource: '系统发布',
-    adminSource: '管理员发布',
-    viewBracket: '打开对阵表',
-    bracketTitle: '实时对阵表',
-    closeBracket: '关闭',
-    bracketHint: '对阵表会优先按横向长图模式查看，直接在窗口内拖动即可浏览完整对阵。',
-    rootOnly: '发布、生成对阵、取消和紧急结算都由 root 管理员控制。',
-    participants: '球员',
-    registeredListTitle: '已报名球员',
-    matchComments: '职业赛评论',
-    commentPlaceholder: '比赛结束后在这里留言...',
-    postComment: '发布评论',
-    noComments: '还没有评论。',
-    commentsLocked: '只有比赛完成后才能评论。',
-    noBracket: '报名结束后，由管理员生成正式对阵表。',
-    tournamentCancelled: '这场职业赛已取消。',
-    minPlayersHint: '至少 4 人、最多 8 人后才能正式开启职业赛。',
-    registrationClosed: '正式生成对阵后将停止报名。',
-    createSuccess: '职业赛已创建。',
-    startSuccess: '对阵表已生成。',
-    cancelSuccess: '职业赛已取消。',
-    settleSuccess: '职业赛已完成结算。',
-    adminScoreSuccess: '已从对阵表直接结算这场比赛。',
-    commentSuccess: '评论已发布。',
-    cancelConfirm: '确认取消这场职业赛吗？此操作无法撤销。',
-    startConfirm: '确认生成对阵表并关闭报名吗？',
-    settleConfirm: '确认现在紧急结算这场职业赛吗？',
-    noProfileForBracket: '部分参赛者资料还没同步到前端，请刷新后再试。',
-    noPreviewCta: '系统职业赛会按周自动刷新。',
-    cardSummaryRegistration: '正式单败淘汰赛，包含季军赛。',
-    cardSummaryOngoing: '对阵已经开始，打开对阵表即可查看实时晋级。',
+    hub: 'Professional Circuit',
+    hubSubtitle: 'System and admin professional events can run side by side. Pick a lane and jump in.',
+    registrationTab: 'Registration',
+    ongoingTab: 'Live',
+    previewTab: 'Upcoming',
+    registrationHint: 'Open for signups',
+    ongoingHint: 'Bracket in progress',
+    previewHint: 'Next week preview',
+    createTournament: 'Publish Admin Professional Event',
+    createTournamentBlocked: 'An admin professional event is already active.',
+    startTournament: 'Generate Bracket',
+    cancelTournament: 'Cancel Tournament',
+    forceSettle: 'Force Settle',
+    adminScoreAction: 'Admin Score',
+    adminScoreTitle: 'Admin Match Result',
+    adminScoreHint: 'Select a bracket match and settle it directly from the viewer.',
+    adminScoreSubmitLabel: 'Save Result',
+    noRegistration: 'No professional events are collecting signups right now.',
+    noOngoing: 'No professional events are live right now.',
+    previewTitle: 'Next Week Professional Cup',
+    previewDescription: 'Preview the next scheduled system professional event.',
+    previewBadge: 'Preview',
+    systemSource: 'System',
+    adminSource: 'Admin',
+    viewBracket: 'Open Bracket',
+    bracketTitle: 'Live Bracket',
+    closeBracket: 'Close',
+    bracketHint: 'The bracket opens in a landscape-style viewer. Drag inside the window to see the full bracket.',
+    rootOnly: 'Publishing, bracket generation, cancel, and emergency settlement are root-only actions.',
+    participants: 'Players',
+    registeredListTitle: 'Registered Players',
+    matchComments: 'Professional Match Comments',
+    commentPlaceholder: 'Leave a comment after the match...',
+    postComment: 'Post Comment',
+    noComments: 'No comments yet.',
+    commentsLocked: 'Comments unlock after the match is completed.',
+    noBracket: 'Generate the bracket once registration is complete.',
+    tournamentCancelled: 'This professional event was cancelled.',
+    minPlayersHint: 'Need at least 4 players and at most 8 players before the professional event can start.',
+    registrationClosed: 'Registration closes as soon as the bracket is generated.',
+    createSuccess: 'Professional event created.',
+    startSuccess: 'Bracket generated.',
+    cancelSuccess: 'Professional event cancelled.',
+    settleSuccess: 'Professional event settled.',
+    adminScoreSuccess: 'Bracket result saved.',
+    commentSuccess: 'Comment posted.',
+    cancelConfirm: 'Cancel this professional event? This cannot be undone.',
+    startConfirm: 'Generate the bracket and lock registration?',
+    settleConfirm: 'Force settle this professional event now?',
+    noProfileForBracket: 'Some participant profiles are still missing. Refresh and try again.',
+    noPreviewCta: 'System professional events refresh weekly.',
+    cardSummaryRegistration: 'Single-elimination bracket with a third-place match.',
+    cardSummaryOngoing: 'Bracket is live. Open the viewer to track advancement.',
   },
 } as const;
 
@@ -176,7 +176,7 @@ export default function TournamentsScreen() {
   const pastTournaments = useMemo(() => tournaments.filter((tournament) => tournament.status === 'completed' || tournament.status === 'cancelled'), [tournaments]);
   const visibleTournaments = lane === 'registration' ? registrationTournaments : lane === 'ongoing' ? ongoingTournaments : [];
   const sportLabel = getSportLabel(sport, language);
-  const previewCard = useMemo(() => buildTournamentPreviewCard(`${ui.previewTitle} · ${sportLabel}`, ui.previewDescription), [sportLabel, ui.previewDescription, ui.previewTitle]);
+  const previewCard = useMemo(() => buildTournamentPreviewCard(`${ui.previewTitle} 路 ${sportLabel}`, ui.previewDescription), [sportLabel, ui.previewDescription, ui.previewTitle]);
   const featuredTournament = lane === 'preview' ? null : visibleTournaments.find((tournament) => tournament.id === selectedTournamentId) ?? visibleTournaments[0] ?? activeTournaments[0] ?? null;
   const selectedMatch = featuredTournament?.bracket.matches.find((match) => match.id === selectedMatchId) ?? featuredTournament?.bracket.matches.find((match) => userProfile && (match.player1Id === userProfile.uid || match.player2Id === userProfile.uid)) ?? featuredTournament?.bracket.matches[0] ?? null;
   const canManageTournament = Boolean(userProfile?.isRoot);
@@ -346,7 +346,7 @@ export default function TournamentsScreen() {
     { id: 'ongoing' as const, label: ui.ongoingTab, hint: ui.ongoingHint, count: ongoingTournaments.length },
     { id: 'preview' as const, label: ui.previewTab, hint: ui.previewHint, count: 1 },
   ];
-  const formatDateLabel = (value: string | Date) => format(new Date(value), language === 'zh' ? 'M月d日' : 'MMM d');
+  const formatDateLabel = (value: string | Date) => format(new Date(value), 'MMM d');
 
   const renderTournamentCard = (tournament: Tournament) => {
     const isSelected = featuredTournament?.id === tournament.id;
@@ -407,7 +407,7 @@ export default function TournamentsScreen() {
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/12 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-amber-500"><Sparkles className="h-4 w-4" />{ui.hub}</div>
-          <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.hub} · {sportLabel}</h2>
+          <h2 className={clsx('mt-4 text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{ui.hub} 路 {sportLabel}</h2>
           {canManageTournament ? (
             <>
               <p className={clsx('mt-2 max-w-2xl text-sm leading-6', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-600')}>{ui.hubSubtitle}</p>
@@ -457,7 +457,7 @@ export default function TournamentsScreen() {
                 {selectedMatch && (selectedMatch.status === 'completed' || selectedMatch.status === 'walkover') ? (
                   <div className="space-y-4">
                     <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1">
-                      {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), language === 'zh' ? 'M月d日 HH:mm' : 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
+                      {comments.length > 0 ? comments.map((comment) => <div key={comment.id} className={clsx('rounded-2xl border px-4 py-3', theme === 'dark' ? 'border-white/5 bg-zinc-950/70' : 'border-zinc-200 bg-zinc-50')}><div className="mb-2 flex items-center justify-between gap-3"><div className={clsx('font-bold', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>{comment.authorName}</div><div className="text-xs font-medium text-zinc-500">{format(new Date(comment.createdAt), 'MMM d, HH:mm')}</div></div><div className={clsx('text-sm leading-6', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>{comment.body}</div></div>) : <div className="font-medium text-zinc-500">{ui.noComments}</div>}
                     </div>
                     <div className="space-y-3">
                       <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} placeholder={ui.commentPlaceholder} rows={4} className={clsx('w-full resize-none rounded-2xl border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-sky-500/30', theme === 'dark' ? 'border-white/10 bg-zinc-950 text-white placeholder:text-zinc-600' : 'border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400')} />

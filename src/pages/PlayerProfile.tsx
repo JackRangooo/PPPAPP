@@ -125,7 +125,7 @@ export default function PlayerProfile() {
         <div className={clsx('rounded-3xl border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
           <div className="mb-4 flex items-center gap-2 text-emerald-500">
             <Star className="h-4 w-4 fill-current" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')} ¡¤ {sportLabel}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.casualStats')} Â· {sportLabel}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {currentStats.casualStars} <span className={clsx('text-sm font-medium', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{t('leaderboard.stars')}</span>
@@ -148,7 +148,7 @@ export default function PlayerProfile() {
         <div className={clsx('rounded-3xl border p-5', theme === 'dark' ? 'border-white/5 bg-zinc-900/50' : 'border-zinc-200 bg-white shadow-sm')}>
           <div className="mb-4 flex items-center gap-2 text-amber-500">
             <Activity className="h-4 w-4" />
-            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.rankedStats')} ¡¤ {sportLabel}</span>
+            <span className="text-xs font-bold uppercase tracking-wider">{t('profile.rankedStats')} Â· {sportLabel}</span>
           </div>
           <div className={clsx('text-3xl font-black', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
             {currentStats.rankedPoints} <span className={clsx('text-sm font-medium', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{t('leaderboard.points')}</span>

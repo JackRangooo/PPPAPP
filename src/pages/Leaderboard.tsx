@@ -141,7 +141,7 @@ export default function Leaderboard() {
               {t('nav.leaderboard')}
             </h1>
             <p className={clsx('font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
-              {t('leaderboard.subtitle')} ¡¤ {getSportLabel(sport, language)}
+              {t('leaderboard.subtitle')} Â· {getSportLabel(sport, language)}
             </p>
 
             <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} className="mt-4" />

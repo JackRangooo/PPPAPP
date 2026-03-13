@@ -102,39 +102,39 @@ const copy = {
     bracketPending: 'Your slot is locked in. Waiting for the previous match to decide your opponent.',
   },
   zh: {
-    title: '消息队列',
-    subtitle: '无论在哪个页面，都可以在这里处理比赛消息。',
-    empty: '当前没有待处理的比赛消息。',
-    casual: '排位赛',
-    tournament: '职业赛',
-    accept: '接受',
-    decline: '拒绝',
-    cancel: '取消',
-    ready: '我已就绪',
-    submit: '提交比分',
-    resubmit: '重新提交比分',
-    submitted: '已提交',
-    scoreEditable: '你已经提交过比分，但在对手确认前仍然可以修改并重新提交。',
-    waitingForOpponent: '等待对手处理。',
-    waitingForReady: '你已就绪，等待对手确认。',
-    opponentSubmitted: '对手已经提交了结果。',
-    enterScores: '请输入最终比分，不能平局。',
-    yourScore: '你',
-    theirScore: '对手',
-    open: '消息',
-    challengerWaiting: '挑战已发出',
-    challengerIncoming: '收到挑战',
-    tournamentReady: '职业赛待就绪',
-    tournamentLive: '职业赛待提交比分',
-    tournamentWaiting: '职业赛待补全对手',
-    scoreMismatch: '双方提交结果不一致，比分已重置。',
-    scoreSubmitted: '比分已提交，等待对手确认。',
-    scoreCompleted: '结果已确认。',
-    actionFailed: '操作失败。',
-    tournamentReadyDone: '你已就绪，等待对手确认。',
-    tournamentReadyLive: '双方都已就绪，可以提交最终比分了。',
-    opponentPending: '对手待定',
-    bracketPending: '你的签位已经确定，正在等待上一场比赛决出对手。',
+    title: 'Message Queue',
+    subtitle: 'Handle match actions from anywhere.',
+    empty: 'No active match messages.',
+    casual: 'Ranked',
+    tournament: 'Professional',
+    accept: 'Accept',
+    decline: 'Decline',
+    cancel: 'Cancel',
+    ready: 'I am Ready',
+    submit: 'Submit Score',
+    resubmit: 'Update Score',
+    submitted: 'Submitted',
+    scoreEditable: 'You already submitted. You can still change the score before your opponent confirms.',
+    waitingForOpponent: 'Waiting for your opponent.',
+    waitingForReady: 'You are ready. Waiting for your opponent.',
+    opponentSubmitted: 'Your opponent already submitted a result.',
+    enterScores: 'Enter the final score. Ties are not allowed.',
+    yourScore: 'You',
+    theirScore: 'Opponent',
+    open: 'Messages',
+    challengerWaiting: 'Challenge sent',
+    challengerIncoming: 'Challenge received',
+    tournamentReady: 'Professional match ready',
+    tournamentLive: 'Professional score pending',
+    tournamentWaiting: 'Professional bracket pending',
+    scoreMismatch: 'The two score submissions did not match and were reset.',
+    scoreSubmitted: 'Score submitted. Waiting for confirmation.',
+    scoreCompleted: 'Result confirmed.',
+    actionFailed: 'Action failed.',
+    tournamentReadyDone: 'You are ready. Waiting for your opponent.',
+    tournamentReadyLive: 'Both players are ready. You can submit the final score.',
+    opponentPending: 'Opponent pending',
+    bracketPending: 'Your slot is locked in. Waiting for the previous match to decide your opponent.',
   },
 } as const;
 
@@ -182,73 +182,45 @@ const tournamentStatusTone = {
 } as const;
 
 const localizeLegacyMatchLabel = (language: Language, label: string) => {
-  if (language === 'en') {
-    return label;
-  }
-
   if (label === 'Grand Final') {
-    return '决赛';
+    return 'Grand Final';
   }
 
   if (label === 'Third Place Match') {
-    return '季军赛';
+    return 'Third Place Match';
   }
 
   const quarterMatch = label.match(/^(Quarterfinal|Qualifier|Play-In)\s+(\d+)$/);
   if (quarterMatch) {
-    const stageText =
-      quarterMatch[1] === 'Quarterfinal'
-        ? '四分之一决赛'
-        : quarterMatch[1] === 'Play-In'
-          ? '附加赛'
-          : '资格赛';
-    return `${stageText} ${quarterMatch[2]}`;
+    return `${quarterMatch[1]} ${quarterMatch[2]}`;
   }
 
   const semifinalMatch = label.match(/^Semifinal\s+(\d+)$/);
   if (semifinalMatch) {
-    return `半决赛 ${semifinalMatch[1]}`;
+    return `Semifinal ${semifinalMatch[1]}`;
   }
 
   return label;
 };
 
-const localizeBracketSource = (language: Language, source: string | null) => {
-  if (!source) {
-    return '';
-  }
-
-  if (language === 'en') {
-    return source;
-  }
-
-  const winnerMatch = source.match(/^Winner of (.+)$/);
-  if (winnerMatch) {
-    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}胜者`;
-  }
-
-  const loserMatch = source.match(/^Loser of (.+)$/);
-  if (loserMatch) {
-    return `${localizeLegacyMatchLabel(language, loserMatch[1])}败者`;
-  }
-
-  return localizeLegacyMatchLabel(language, source);
+const localizeBracketSource = (_language: Language, source: string | null) => {
+  return source ?? '';
 };
 
-const getLocalizedMatchLabel = (language: Language, match: TournamentBracketMatch) => {
+const getLocalizedMatchLabel = (_language: Language, match: TournamentBracketMatch) => {
   if (match.stage === 'final') {
-    return language === 'zh' ? '决赛' : 'Grand Final';
+    return 'Grand Final';
   }
 
   if (match.stage === 'third_place') {
-    return language === 'zh' ? '季军赛' : 'Third Place Match';
+    return 'Third Place Match';
   }
 
   if (match.stage === 'semifinal') {
-    return language === 'zh' ? `半决赛 ${match.slot}` : `Semifinal ${match.slot}`;
+    return `Semifinal ${match.slot}`;
   }
 
-  return language === 'zh' ? `资格赛 ${match.slot}` : `Qualifier ${match.slot}`;
+  return `Qualifier ${match.slot}`;
 };
 
 const buildCasualQueueItem = (match: Match, userId: string, ui: typeof copy.en): QueueItem => {
@@ -309,7 +281,7 @@ const buildTournamentQueueItem = (
     kind: 'tournament',
     tournament,
     match,
-    title: `${tournament.name} · ${matchLabel}`,
+    title: `${tournament.name} 路 ${matchLabel}`,
     subtitle,
     avatarUrl:
       opponentAvatarUrl ||

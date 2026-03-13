@@ -45,22 +45,22 @@ const copy = {
     comingSoon: 'Effect coming later',
   },
   zh: {
-    backpack: '背包',
-    trophies: '奖杯',
-    titles: '称号',
-    items: '道具',
-    shop: '商店',
-    winToEarn: '赢下锦标赛即可获得奖杯。',
-    noItems: '购买后的技能卡和道具会显示在这里。',
-    noShopItems: '商店里暂时还没有上架商品。',
-    remove: '取下',
-    display: '展示',
-    showcaseFull: '展示柜已满，请先取下一个奖杯。',
-    buy: '购买',
-    owned: '拥有',
-    coins: '金币',
-    shopHint: '先把道具买进背包，具体效果会在后续版本接入。',
-    comingSoon: '效果后续开放',
+    backpack: 'Backpack',
+    trophies: 'Trophies',
+    titles: 'Titles',
+    items: 'Items',
+    shop: 'Shop',
+    winToEarn: 'Win tournaments to earn trophies.',
+    noItems: 'Bought cards and items will appear here.',
+    noShopItems: 'No products are live in the shop yet.',
+    remove: 'Remove',
+    display: 'Display',
+    showcaseFull: 'Showcase is full. Remove a trophy first.',
+    buy: 'Buy',
+    owned: 'Owned',
+    coins: 'Coins',
+    shopHint: 'Build your bag now. Gameplay effects can be wired in later.',
+    comingSoon: 'Effect coming later',
   },
 } as const;
 
@@ -69,7 +69,7 @@ const kindLabels = {
     card: 'Card',
   },
   zh: {
-    card: '技能卡',
+    card: 'Card',
   },
 } as const;
 
@@ -81,9 +81,9 @@ const productLocalization = {
       effectHint: 'Future: choose a first-round opponent',
     },
     zh: {
-      name: '自选卡',
-      description: '未来可在锦标赛中指定第一轮对手。当前版本仅支持购买和入库，效果暂未开放。',
-      effectHint: '未来可指定第一轮对手',
+      name: 'Self-Select Card',
+      description: 'Choose your first-round opponent in a future tournament. This version only supports buying and storing it.',
+      effectHint: 'Future: choose a first-round opponent',
     },
   },
 } as const;
@@ -126,7 +126,7 @@ export default function ProfileInventorySheet({
 }: ProfileInventorySheetProps) {
   const ui = copy[language];
   const visibleTrophies = (userProfile.inventory?.trophies || []).filter((trophy) => trophy.sport === sport);
-  const priceUnit = language === 'zh' ? '金币' : 'coins';
+  const priceUnit = language === 'zh' ? 'coins' : 'coins';
 
   return (
     <AnimatePresence>

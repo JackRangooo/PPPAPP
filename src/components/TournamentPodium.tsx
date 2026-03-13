@@ -35,12 +35,12 @@ const copy = {
     matchesPlayed: 'matches',
   },
   zh: {
-    title: '领奖台',
-    champion: '冠军',
-    runnerUp: '亚军',
-    thirdPlace: '季军',
-    others: '其余选手',
-    matchesPlayed: '场',
+    title: 'Podium',
+    champion: 'Champion',
+    runnerUp: 'Runner-up',
+    thirdPlace: 'Third Place',
+    others: 'Other Finishers',
+    matchesPlayed: 'matches',
   },
 } as const;
 
