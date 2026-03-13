@@ -22,6 +22,17 @@ export default function Leaderboard() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('stars');
   const [loading, setLoading] = useState(true);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollTop(window.scrollY || document.documentElement.scrollTop || 0);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -114,43 +125,57 @@ export default function Leaderboard() {
     return <span className={clsx('w-6 text-center text-lg font-bold', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-400')}>{index + 1}</span>;
   };
 
+  const compact = scrollTop > 18;
+  const hidden = scrollTop > 210;
+
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-      <header className="-mx-4 -mt-4 sticky top-0 z-40 pb-4 md:mx-0 md:mt-0">
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+      <header
+        className={clsx(
+          '-mx-4 -mt-4 sticky top-0 z-40 pb-1 transition-all duration-300 md:mx-0 md:mt-0',
+          hidden ? 'pointer-events-none -translate-y-[calc(100%+0.75rem)] opacity-0' : 'translate-y-0 opacity-100',
+        )}
+      >
         <div
           className={clsx(
-            'relative overflow-hidden border px-4 pb-4 backdrop-blur-[26px] backdrop-saturate-150 md:rounded-[2rem] md:border',
-            'rounded-b-[2rem] border-x-0 border-t-0',
+            'relative overflow-hidden border px-4 backdrop-blur-[24px] backdrop-saturate-150 transition-all duration-300 md:rounded-[2rem] md:border',
+            'rounded-b-[1.45rem] border-x-0 border-t-0',
+            compact ? 'pb-2.5' : 'pb-3.5',
             theme === 'dark'
-              ? 'border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.92),rgba(10,13,21,0.82))] shadow-[0_18px_40px_rgba(2,6,23,0.28),inset_0_1px_0_rgba(255,255,255,0.12)]'
-              : 'border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(244,247,255,0.78))] shadow-[0_16px_32px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]',
+              ? 'border-white/10 bg-[linear-gradient(180deg,rgba(17,24,39,0.88),rgba(10,13,21,0.76))] shadow-[0_14px_30px_rgba(2,6,23,0.22),inset_0_1px_0_rgba(255,255,255,0.12)]'
+              : 'border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(244,247,255,0.8))] shadow-[0_12px_24px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.92)]',
           )}
-          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.35rem)' }}
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
         >
           <span
             className={clsx(
-              'pointer-events-none absolute inset-x-10 top-1 h-8 rounded-full blur-2xl',
+              'pointer-events-none absolute inset-x-10 top-1 h-6 rounded-full blur-2xl',
               theme === 'dark'
-                ? 'bg-[linear-gradient(90deg,rgba(16,185,129,0.14),rgba(255,255,255,0.08),rgba(59,130,246,0.14))]'
-                : 'bg-[linear-gradient(90deg,rgba(16,185,129,0.1),rgba(255,255,255,0.92),rgba(59,130,246,0.1))]',
+                ? 'bg-[linear-gradient(90deg,rgba(16,185,129,0.12),rgba(255,255,255,0.06),rgba(59,130,246,0.1))]'
+                : 'bg-[linear-gradient(90deg,rgba(16,185,129,0.08),rgba(255,255,255,0.9),rgba(59,130,246,0.08))]',
             )}
           />
+
           <div className="relative">
-            <h1 className={clsx('mb-2 flex items-center gap-3 text-3xl font-bold tracking-tight', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-              <Award className="h-8 w-8 text-emerald-500" />
-              {t('nav.leaderboard')}
-            </h1>
-            <p className={clsx('font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
-              {t('leaderboard.subtitle')} Â· {getSportLabel(sport, language)}
-            </p>
+            <div className="mb-2.5">
+              <h1 className={clsx('mb-0.5 flex items-center gap-2.5 font-bold tracking-tight', compact ? 'text-[1.75rem]' : 'text-[2rem]', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+                <Award className="h-7 w-7 text-emerald-500" />
+                {t('nav.leaderboard')}
+              </h1>
+              <p className={clsx('text-xs font-medium', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+                {t('leaderboard.subtitle')} ¡¤ {getSportLabel(sport, language)}
+              </p>
+            </div>
 
-            <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} className="mt-4" />
+            <div className={clsx('mb-2 overflow-hidden transition-all duration-300', compact ? 'max-h-11 opacity-100' : 'max-h-14 opacity-100')}>
+              <SportToggle sport={sport} onChange={setSport} theme={theme} language={language} />
+            </div>
 
-            <div className={clsx('mt-4 flex rounded-2xl border p-1', theme === 'dark' ? 'border-white/10 bg-zinc-950/55' : 'border-zinc-200 bg-white/80 shadow-sm')}>
+            <div className={clsx('flex rounded-2xl border p-1', theme === 'dark' ? 'border-white/10 bg-zinc-950/55' : 'border-zinc-200 bg-white/80 shadow-sm')}>
               <button
                 onClick={() => setSortBy('stars')}
                 className={clsx(
-                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold transition-all',
                   sortBy === 'stars'
                     ? 'bg-emerald-500 text-zinc-950 shadow-lg'
                     : theme === 'dark'
@@ -164,7 +189,7 @@ export default function Leaderboard() {
               <button
                 onClick={() => setSortBy('points')}
                 className={clsx(
-                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold transition-all',
                   sortBy === 'points'
                     ? 'bg-amber-500 text-zinc-950 shadow-lg'
                     : theme === 'dark'
@@ -178,7 +203,7 @@ export default function Leaderboard() {
               <button
                 onClick={() => setSortBy('winrate')}
                 className={clsx(
-                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all',
+                  'flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-bold transition-all',
                   sortBy === 'winrate'
                     ? 'bg-blue-500 text-zinc-950 shadow-lg'
                     : theme === 'dark'
@@ -194,7 +219,7 @@ export default function Leaderboard() {
         </div>
       </header>
 
-      <div className="space-y-3">
+      <div className="space-y-3 pb-3">
         {loading ? (
           <div className="py-12 text-center font-medium text-zinc-500">{t('leaderboard.loading')}</div>
         ) : sortedUsers.length === 0 ? (
@@ -228,7 +253,7 @@ export default function Leaderboard() {
                     <img
                       src={currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName)}&background=random`}
                       alt={currentUser.displayName}
-                      className={clsx('h-12 w-12 shrink-0 rounded-full border-2 object-cover', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}
+                      className={clsx('h-12 w-12 shrink-0 rounded-full border-2 object-cover object-center', theme === 'dark' ? 'border-zinc-800' : 'border-zinc-200')}
                       referrerPolicy="no-referrer"
                     />
                     <div className="min-w-0">
@@ -242,7 +267,7 @@ export default function Leaderboard() {
                     </div>
                   </Link>
 
-                  <div className="flex shrink-0 flex-col items-end gap-2 text-right">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5 text-right">
                     <CompetitiveDivisionBadge
                       division={currentUser.division}
                       stars={currentUser.sportStats.casualStars}
@@ -260,6 +285,11 @@ export default function Leaderboard() {
                     {sortBy === 'winrate' ? (
                       <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-sm font-black text-blue-500">
                         {currentUser.winRate}% <Activity className="h-5 w-5" />
+                      </div>
+                    ) : null}
+                    {sortBy === 'stars' ? (
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-black text-emerald-500">
+                        {currentUser.sportStats.casualStars} <Star className="h-5 w-5 fill-current" />
                       </div>
                     ) : null}
                   </div>

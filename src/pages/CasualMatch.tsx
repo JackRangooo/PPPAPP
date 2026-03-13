@@ -59,7 +59,7 @@ export default function CasualMatch({ search }: CasualMatchProps) {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-[8.5rem] md:pb-28">
       <section>
         <div className="space-y-3">
           {filteredUsers.map((currentUser) => {
@@ -116,3 +116,4 @@ export default function CasualMatch({ search }: CasualMatchProps) {
     </div>
   );
 }
+

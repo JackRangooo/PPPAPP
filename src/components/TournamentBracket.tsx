@@ -1,4 +1,4 @@
-ï»¿import clsx from 'clsx';
+import clsx from 'clsx';
 
 import { getTournamentMatchStatusTone } from '../lib/tournamentBracket';
 import type { Language, Theme, TournamentBracketMatch } from '../types';
@@ -16,13 +16,13 @@ const stageHeadings = {
   },
   zh: {
     quarterfinal: {
-      full: 'å››åˆ†ä¹‹ä¸€å†³èµ›',
-      compact: 'èµ„æ ¼èµ›',
+      full: 'ËÄ·ÖÖ®Ò»¾öÈü',
+      compact: '×Ê¸ñÈü',
     },
-    semifinal: 'åŠå†³èµ›',
-    final: 'å†³èµ›',
-    thirdPlace: 'å­£å†›èµ›',
-    feedHint: 'ä¸¤åœºåŠå†³èµ›çš„è´¥è€…ä¼šåœ¨è¿™é‡Œäº‰å¤ºå­£å†›ã€‚',
+    semifinal: '°ë¾öÈü',
+    final: '¾öÈü',
+    thirdPlace: '¼¾¾üÈü',
+    feedHint: 'Á½³¡°ë¾öÈüµÄ°ÜÕß»áÔÚÕâÀïÕù¶á¼¾¾ü¡£',
   },
 } as const;
 
@@ -35,19 +35,15 @@ const statusLabels = {
     completed: 'Done',
     walkover: 'Walkover',
     unknown: 'TBD',
-    you: 'You',
-    yourMatch: 'Your Match',
   },
   zh: {
-    waiting: 'å¾…å®š',
-    pending: 'å¾…å°±ç»ª',
-    ongoing: 'è¿›è¡Œä¸­',
-    waiting_confirmation: 'å¾…ç¡®è®¤',
-    completed: 'å·²å®Œæˆ',
-    walkover: 'è½®ç©º',
-    unknown: 'å¾…å®š',
-    you: 'ä½ ',
-    yourMatch: 'ä½ çš„æ¯”èµ›',
+    waiting: '´ı¶¨',
+    pending: '´ı¾ÍĞ÷',
+    ongoing: '½øĞĞÖĞ',
+    waiting_confirmation: '´ıÈ·ÈÏ',
+    completed: 'ÒÑÍê³É',
+    walkover: 'ÂÖ¿Õ',
+    unknown: '´ı¶¨',
   },
 } as const;
 
@@ -58,27 +54,10 @@ const toneClasses: Record<string, string> = {
   zinc: 'border-white/10 bg-white/5 text-zinc-300',
 };
 
-const CARD_WIDTH = 176;
-const CARD_HEIGHT = 94;
-const COLUMN_GAP = 22;
-const ROW_GAP = 10;
-const MAIN_ROW_COUNT = 8;
-
-const rowMap: Record<'quarterfinal' | 'semifinal' | 'final', Record<number, number>> = {
-  quarterfinal: {
-    1: 1,
-    2: 3,
-    3: 5,
-    4: 7,
-  },
-  semifinal: {
-    1: 2,
-    2: 6,
-  },
-  final: {
-    1: 4,
-  },
-};
+const CARD_WIDTH = 128;
+const CARD_HEIGHT = 64;
+const COLUMN_GAP = 14;
+const ROW_GAP = 8;
 
 type TournamentBracketProps = {
   matches: TournamentBracketMatch[];
@@ -97,6 +76,45 @@ type PlayerIdentity = {
   displayLabel: string;
   avatarUrl: string;
   score: number | null;
+};
+
+type LayoutConfig = {
+  rowCount: number;
+  rowMap: Record<MainStage, Record<number, number>>;
+};
+
+const MAIN_LAYOUTS: Record<'withQuarterfinals' | 'withoutQuarterfinals', LayoutConfig> = {
+  withQuarterfinals: {
+    rowCount: 7,
+    rowMap: {
+      quarterfinal: {
+        1: 1,
+        2: 3,
+        3: 5,
+        4: 7,
+      },
+      semifinal: {
+        1: 2,
+        2: 6,
+      },
+      final: {
+        1: 4,
+      },
+    },
+  },
+  withoutQuarterfinals: {
+    rowCount: 3,
+    rowMap: {
+      quarterfinal: {},
+      semifinal: {
+        1: 1,
+        2: 3,
+      },
+      final: {
+        1: 2,
+      },
+    },
+  },
 };
 
 const getMainStages = (matches: TournamentBracketMatch[]): MainStage[] =>
@@ -120,22 +138,22 @@ const localizeLegacyMatchLabel = (language: Language, label: string) => {
   }
 
   if (label === 'Grand Final') {
-    return 'å†³èµ›';
+    return '¾öÈü';
   }
 
   if (label === 'Third Place Match') {
-    return 'å­£å†›èµ›';
+    return '¼¾¾üÈü';
   }
 
   const quarterMatch = label.match(/^(Quarterfinal|Qualifier|Play-In)\s+(\d+)$/);
   if (quarterMatch) {
-    const stageText = quarterMatch[1] === 'Quarterfinal' ? 'å››åˆ†ä¹‹ä¸€å†³èµ›' : 'èµ„æ ¼èµ›';
+    const stageText = quarterMatch[1] === 'Quarterfinal' ? 'ËÄ·ÖÖ®Ò»¾öÈü' : '×Ê¸ñÈü';
     return `${stageText} ${quarterMatch[2]}`;
   }
 
   const semifinalMatch = label.match(/^Semifinal\s+(\d+)$/);
   if (semifinalMatch) {
-    return `åŠå†³èµ› ${semifinalMatch[1]}`;
+    return `°ë¾öÈü ${semifinalMatch[1]}`;
   }
 
   return label;
@@ -152,12 +170,12 @@ const localizeSourceLabel = (language: Language, source: string | null) => {
 
   const winnerMatch = source.match(/^Winner of (.+)$/);
   if (winnerMatch) {
-    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}èƒœè€…`;
+    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}Ê¤Õß`;
   }
 
   const loserMatch = source.match(/^Loser of (.+)$/);
   if (loserMatch) {
-    return `${localizeLegacyMatchLabel(language, loserMatch[1])}è´¥è€…`;
+    return `${localizeLegacyMatchLabel(language, loserMatch[1])}°ÜÕß`;
   }
 
   return localizeLegacyMatchLabel(language, source);
@@ -165,26 +183,29 @@ const localizeSourceLabel = (language: Language, source: string | null) => {
 
 const getMatchDisplayLabel = (language: Language, match: TournamentBracketMatch) => {
   if (match.stage === 'final') {
-    return language === 'zh' ? 'å†³èµ›' : 'Grand Final';
+    return language === 'zh' ? '¾öÈü' : 'Grand Final';
   }
 
   if (match.stage === 'third_place') {
-    return language === 'zh' ? 'å­£å†›èµ›' : 'Third Place';
+    return language === 'zh' ? '¼¾¾üÈü' : 'Third Place';
   }
 
   if (match.stage === 'semifinal') {
-    return language === 'zh' ? `åŠå†³èµ› ${match.slot}` : `Semifinal ${match.slot}`;
+    return language === 'zh' ? `°ë¾öÈü ${match.slot}` : `Semifinal ${match.slot}`;
   }
 
-  return language === 'zh' ? `èµ„æ ¼èµ› ${match.slot}` : `Qualifier ${match.slot}`;
+  return language === 'zh' ? `×Ê¸ñÈü ${match.slot}` : `Qualifier ${match.slot}`;
 };
 
-const compactPlayerName = (name: string, maxLength = 8) => {
+const compactPlayerName = (name: string) => {
+  const hasCjk = /[\u3400-\u9FFF]/.test(name);
+  const maxLength = hasCjk ? 4 : 7;
+
   if (name.length <= maxLength) {
     return name;
   }
 
-  return `${name.slice(0, maxLength - 1)}...`;
+  return `${name.slice(0, maxLength)}¡­`;
 };
 
 const getPlayerIdentity = (
@@ -209,7 +230,12 @@ const getPlayerIdentity = (
   };
 };
 
-const getConnectorMetrics = (mainStages: readonly MainStage[], stage: MainStage, slot: number) => {
+const getConnectorMetrics = (
+  mainStages: readonly MainStage[],
+  rowMap: LayoutConfig['rowMap'],
+  stage: MainStage,
+  slot: number,
+) => {
   const columnIndex = mainStages.indexOf(stage);
   const row = rowMap[stage][slot];
   const x = columnIndex * (CARD_WIDTH + COLUMN_GAP);
@@ -229,17 +255,6 @@ const renderPlayerRow = (
   match: TournamentBracketMatch,
   currentUserId: string | null,
   theme: Theme,
-  labels: {
-    unknown: string;
-    you: string;
-    yourMatch: string;
-    waiting: string;
-    pending: string;
-    ongoing: string;
-    waiting_confirmation: string;
-    completed: string;
-    walkover: string;
-  },
 ) => {
   const isWinner = Boolean(match.winnerId && match.winnerId === player.id);
   const isCurrent = Boolean(currentUserId && player.id === currentUserId);
@@ -249,11 +264,11 @@ const renderPlayerRow = (
       key={`${matchId}-${slot}`}
       title={player.name}
       className={clsx(
-        'flex items-center gap-2 rounded-[0.95rem] border px-2.5 py-2',
-        theme === 'dark' ? 'border-white/6 bg-zinc-950/78' : 'border-zinc-100 bg-zinc-50',
+        'flex h-[22px] items-center gap-1.5 rounded-full border px-1.5',
+        theme === 'dark' ? 'border-white/6 bg-zinc-950/82' : 'border-zinc-200 bg-zinc-50',
         isWinner &&
           (theme === 'dark'
-            ? 'border-emerald-500/30 bg-emerald-500/10'
+            ? 'border-emerald-500/35 bg-emerald-500/10'
             : 'border-emerald-300 bg-emerald-50'),
       )}
     >
@@ -265,15 +280,15 @@ const renderPlayerRow = (
           }
           alt={player.name}
           className={clsx(
-            'h-7 w-7 shrink-0 rounded-full object-cover object-center',
-            isCurrent ? 'ring-2 ring-emerald-500/55 ring-offset-1 ring-offset-transparent' : '',
+            'h-5 w-5 shrink-0 rounded-full object-cover object-center',
+            isCurrent ? 'ring-2 ring-emerald-500/60 ring-offset-1 ring-offset-transparent' : '',
           )}
           referrerPolicy="no-referrer"
         />
       ) : (
         <div
           className={clsx(
-            'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[9px] font-black uppercase',
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-black uppercase',
             theme === 'dark' ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-500',
           )}
         >
@@ -281,21 +296,12 @@ const renderPlayerRow = (
         </div>
       )}
 
-      <div className="min-w-0 flex-1">
-        <div className={clsx('truncate text-[12px] font-black leading-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
-          {player.displayLabel}
-        </div>
+      <div className={clsx('min-w-0 flex-1 truncate text-[10px] font-black leading-none', theme === 'dark' ? 'text-white' : 'text-zinc-900')}>
+        {player.displayLabel}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
-        {isCurrent ? (
-          <span className="rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-emerald-400">
-            {labels.you}
-          </span>
-        ) : null}
-        <div className={clsx('min-w-4 text-right text-sm font-black', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
-          {typeof player.score === 'number' ? player.score : '-'}
-        </div>
+      <div className={clsx('min-w-3 shrink-0 text-right text-[11px] font-black', theme === 'dark' ? 'text-zinc-300' : 'text-zinc-700')}>
+        {typeof player.score === 'number' ? player.score : '-'}
       </div>
     </div>
   );
@@ -311,6 +317,10 @@ export default function TournamentBracket({
 }: TournamentBracketProps) {
   const labels = statusLabels[language];
   const mainStages = getMainStages(matches);
+  const layout =
+    mainStages.includes('quarterfinal')
+      ? MAIN_LAYOUTS.withQuarterfinals
+      : MAIN_LAYOUTS.withoutQuarterfinals;
   const thirdPlaceMatch = matches.find((match) => match.stage === 'third_place') ?? null;
 
   const mainMatches = matches
@@ -328,7 +338,7 @@ export default function TournamentBracket({
     });
 
   const matchById = Object.fromEntries(mainMatches.map((match) => [match.id, match]));
-  const treeHeight = MAIN_ROW_COUNT * CARD_HEIGHT + (MAIN_ROW_COUNT - 1) * ROW_GAP;
+  const treeHeight = layout.rowCount * CARD_HEIGHT + (layout.rowCount - 1) * ROW_GAP;
   const treeWidth = mainStages.length * CARD_WIDTH + (mainStages.length - 1) * COLUMN_GAP;
 
   const connectors = mainMatches
@@ -342,8 +352,8 @@ export default function TournamentBracket({
         return null;
       }
 
-      const from = getConnectorMetrics(mainStages, match.stage, match.slot);
-      const to = getConnectorMetrics(mainStages, nextMatch.stage, nextMatch.slot);
+      const from = getConnectorMetrics(mainStages, layout.rowMap, match.stage, match.slot);
+      const to = getConnectorMetrics(mainStages, layout.rowMap, nextMatch.stage, nextMatch.slot);
       const elbowX = from.rightX + COLUMN_GAP / 2;
 
       return {
@@ -354,10 +364,10 @@ export default function TournamentBracket({
     .filter((connector): connector is { id: string; d: string } => Boolean(connector));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="min-w-max">
         <div
-          className="mb-3 grid"
+          className="mb-2 grid"
           style={{
             gridTemplateColumns: `repeat(${mainStages.length}, ${CARD_WIDTH}px)`,
             columnGap: `${COLUMN_GAP}px`,
@@ -368,7 +378,7 @@ export default function TournamentBracket({
 
             return (
               <div key={stage}>
-                <h3 className={clsx('text-[11px] font-black uppercase tracking-[0.2em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                <h3 className={clsx('text-[9px] font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
                   {getMainHeading(language, stage, stageMatches.length)}
                 </h3>
               </div>
@@ -383,7 +393,7 @@ export default function TournamentBracket({
                 key={connector.id}
                 d={connector.d}
                 fill="none"
-                stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.3)' : 'rgba(100, 116, 139, 0.24)'}
+                stroke={theme === 'dark' ? 'rgba(148, 163, 184, 0.28)' : 'rgba(100, 116, 139, 0.24)'}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -395,7 +405,7 @@ export default function TournamentBracket({
             className="relative z-10 grid"
             style={{
               gridTemplateColumns: `repeat(${mainStages.length}, ${CARD_WIDTH}px)`,
-              gridTemplateRows: `repeat(${MAIN_ROW_COUNT}, ${CARD_HEIGHT}px)`,
+              gridTemplateRows: `repeat(${layout.rowCount}, ${CARD_HEIGHT}px)`,
               columnGap: `${COLUMN_GAP}px`,
               rowGap: `${ROW_GAP}px`,
             }}
@@ -403,13 +413,10 @@ export default function TournamentBracket({
             {mainMatches.map((match) => {
               const tone = getTournamentMatchStatusTone(match.status);
               const isSelected = selectedMatchId === match.id;
-              const isMine = Boolean(
-                currentUserId && (match.player1Id === currentUserId || match.player2Id === currentUserId),
-              );
               const player1 = getPlayerIdentity(language, match, 1, labels);
               const player2 = getPlayerIdentity(language, match, 2, labels);
               const gridColumn = mainStages.indexOf(match.stage) + 1;
-              const gridRow = rowMap[match.stage][match.slot];
+              const gridRow = layout.rowMap[match.stage][match.slot];
               const displayLabel = getMatchDisplayLabel(language, match);
 
               return (
@@ -419,35 +426,26 @@ export default function TournamentBracket({
                   onClick={() => onSelectMatch(match)}
                   style={{ gridColumn, gridRow }}
                   className={clsx(
-                    'h-[94px] w-[176px] overflow-hidden rounded-[1.35rem] border p-2.5 text-left transition-all shadow-[0_12px_26px_rgba(2,6,23,0.08)]',
-                    theme === 'dark' ? 'border-white/8 bg-zinc-900/92 hover:bg-zinc-900' : 'border-zinc-200 bg-white hover:bg-zinc-50',
+                    'h-[64px] w-[128px] overflow-hidden rounded-[1.05rem] border p-1.5 text-left transition-all shadow-[0_8px_18px_rgba(2,6,23,0.08)]',
+                    theme === 'dark' ? 'border-white/8 bg-zinc-900/94 hover:bg-zinc-900' : 'border-zinc-200 bg-white hover:bg-zinc-50',
                     isSelected &&
                       (theme === 'dark'
-                        ? 'border-emerald-500/40 ring-2 ring-emerald-500/45'
+                        ? 'border-emerald-500/45 ring-2 ring-emerald-500/45'
                         : 'border-emerald-400 ring-2 ring-emerald-500/25'),
                   )}
                 >
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className={clsx('truncate text-[9px] font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
-                        {displayLabel}
-                      </div>
-                      <div className={clsx('mt-0.5 text-[9px] font-semibold', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
-                        BO{match.bestOf}
-                      </div>
+                  <div className="mb-1 flex items-center justify-between gap-1">
+                    <div className={clsx('truncate text-[8px] font-black uppercase tracking-[0.14em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+                      {displayLabel}
                     </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {isMine ? <span className="h-2 w-2 rounded-full bg-emerald-500" /> : null}
-                      <div className={clsx('shrink-0 rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.16em]', toneClasses[tone])}>
-                        {labels[match.status]}
-                      </div>
+                    <div className={clsx('shrink-0 rounded-full border px-1.5 py-0.5 text-[7px] font-black uppercase tracking-[0.12em]', toneClasses[tone])}>
+                      {labels[match.status]}
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    {renderPlayerRow(match.id, player1, 1, match, currentUserId, theme, labels)}
-                    {renderPlayerRow(match.id, player2, 2, match, currentUserId, theme, labels)}
+                  <div className="space-y-1">
+                    {renderPlayerRow(match.id, player1, 1, match, currentUserId, theme)}
+                    {renderPlayerRow(match.id, player2, 2, match, currentUserId, theme)}
                   </div>
                 </button>
               );
@@ -457,17 +455,17 @@ export default function TournamentBracket({
       </div>
 
       {thirdPlaceMatch ? (
-        <section className={clsx('rounded-[1.55rem] border p-3.5 sm:p-4', theme === 'dark' ? 'border-white/8 bg-zinc-900/68' : 'border-zinc-200 bg-white shadow-sm')}>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <section className={clsx('rounded-[1.2rem] border p-3', theme === 'dark' ? 'border-white/8 bg-zinc-900/68' : 'border-zinc-200 bg-white shadow-sm')}>
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className={clsx('text-[11px] font-black uppercase tracking-[0.2em]', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
+              <h3 className={clsx('text-[9px] font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-400' : 'text-zinc-500')}>
                 {stageHeadings[language].thirdPlace}
               </h3>
-              <p className={clsx('mt-1 text-xs', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+              <p className={clsx('mt-1 text-[11px]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
                 {stageHeadings[language].feedHint}
               </p>
             </div>
-            <div className={clsx('rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em]', toneClasses[getTournamentMatchStatusTone(thirdPlaceMatch.status)])}>
+            <div className={clsx('rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.14em]', toneClasses[getTournamentMatchStatusTone(thirdPlaceMatch.status)])}>
               {labels[thirdPlaceMatch.status]}
             </div>
           </div>
@@ -476,7 +474,7 @@ export default function TournamentBracket({
             type="button"
             onClick={() => onSelectMatch(thirdPlaceMatch)}
             className={clsx(
-              'w-full rounded-[1.3rem] border p-3 text-left transition-all',
+              'w-full rounded-[1rem] border p-2.5 text-left transition-all',
               theme === 'dark' ? 'border-white/8 bg-zinc-950/76 hover:bg-zinc-950' : 'border-zinc-200 bg-zinc-50 hover:bg-white',
               selectedMatchId === thirdPlaceMatch.id &&
                 (theme === 'dark'
@@ -485,25 +483,24 @@ export default function TournamentBracket({
             )}
           >
             <div className="mb-2 flex items-center justify-between gap-2">
-              <div className={clsx('text-[10px] font-black uppercase tracking-[0.18em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
+              <div className={clsx('text-[9px] font-black uppercase tracking-[0.16em]', theme === 'dark' ? 'text-zinc-500' : 'text-zinc-500')}>
                 {getMatchDisplayLabel(language, thirdPlaceMatch)}
               </div>
-              {currentUserId && (thirdPlaceMatch.player1Id === currentUserId || thirdPlaceMatch.player2Id === currentUserId) ? (
-                <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-emerald-400">
-                  {labels.yourMatch}
-                </span>
-              ) : null}
+              <div className={clsx('rounded-full border px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.12em]', toneClasses[getTournamentMatchStatusTone(thirdPlaceMatch.status)])}>
+                {labels[thirdPlaceMatch.status]}
+              </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {([1, 2] as const).map((slot) => renderPlayerRow(
-                thirdPlaceMatch.id,
-                getPlayerIdentity(language, thirdPlaceMatch, slot, labels),
-                slot,
-                thirdPlaceMatch,
-                currentUserId,
-                theme,
-                labels,
-              ))}
+            <div className="space-y-1.5">
+              {([1, 2] as const).map((slot) =>
+                renderPlayerRow(
+                  thirdPlaceMatch.id,
+                  getPlayerIdentity(language, thirdPlaceMatch, slot, labels),
+                  slot,
+                  thirdPlaceMatch,
+                  currentUserId,
+                  theme,
+                ),
+              )}
             </div>
           </button>
         </section>
@@ -511,7 +508,3 @@ export default function TournamentBracket({
     </div>
   );
 }
-
-
-
-

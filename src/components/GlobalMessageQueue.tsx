@@ -1,4 +1,4 @@
-ï»¿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Check,
@@ -102,39 +102,39 @@ const copy = {
     bracketPending: 'Your slot is locked in. Waiting for the previous match to decide your opponent.',
   },
   zh: {
-    title: 'æ¶ˆæ¯æ°”æ³¡',
-    subtitle: 'éšæ—¶å¤„ç†æ¯”èµ›ç›¸å…³æ“ä½œã€‚',
-    empty: 'å½“å‰æ²¡æœ‰å¾…å¤„ç†çš„æ¯”èµ›æ¶ˆæ¯ã€‚',
-    casual: 'æŽ’ä½èµ›',
-    tournament: 'èŒä¸šèµ›',
-    accept: 'æŽ¥å—',
-    decline: 'æ‹’ç»',
-    cancel: 'å–æ¶ˆ',
-    ready: 'å‡†å¤‡å°±ç»ª',
-    submit: 'æäº¤æ¯”åˆ†',
-    resubmit: 'é‡æ–°æäº¤',
-    submitted: 'å·²æäº¤',
-    scoreEditable: 'ä½ å·²ç»æäº¤è¿‡æ¯”åˆ†ï¼Œä½†åœ¨å¯¹æ‰‹ç¡®è®¤å‰ä»ç„¶å¯ä»¥ä¿®æ”¹ã€‚',
-    waitingForOpponent: 'ç­‰å¾…å¯¹æ‰‹å¤„ç†ã€‚',
-    waitingForReady: 'ä½ å·²å‡†å¤‡å°±ç»ªï¼Œç­‰å¾…å¯¹æ‰‹ã€‚',
-    opponentSubmitted: 'å¯¹æ‰‹å·²ç»æäº¤äº†ä¸€ä¸ªç»“æžœã€‚',
-    enterScores: 'è¯·è¾“å…¥æœ€ç»ˆæ¯”åˆ†ï¼Œä¸èƒ½å¹³åˆ†ã€‚',
-    yourScore: 'ä½ ',
-    theirScore: 'å¯¹æ‰‹',
-    open: 'æ¶ˆæ¯',
-    challengerWaiting: 'å·²å‘èµ·æŒ‘æˆ˜',
-    challengerIncoming: 'æ”¶åˆ°æŒ‘æˆ˜',
-    tournamentReady: 'èŒä¸šèµ›å¯ä»¥å¼€å§‹',
-    tournamentLive: 'èŒä¸šèµ›å¾…æäº¤æ¯”åˆ†',
-    tournamentWaiting: 'èŒä¸šèµ›ç­‰å¾…å¯¹æ‰‹',
-    scoreMismatch: 'åŒæ–¹æäº¤çš„æ¯”åˆ†ä¸ä¸€è‡´ï¼Œç³»ç»Ÿå·²é‡ç½®ã€‚',
-    scoreSubmitted: 'æ¯”åˆ†å·²æäº¤ï¼Œç­‰å¾…ç¡®è®¤ã€‚',
-    scoreCompleted: 'ç»“æžœå·²ç¡®è®¤ã€‚',
-    actionFailed: 'æ“ä½œå¤±è´¥ã€‚',
-    tournamentReadyDone: 'ä½ å·²å‡†å¤‡å°±ç»ªï¼Œç­‰å¾…å¯¹æ‰‹ã€‚',
-    tournamentReadyLive: 'åŒæ–¹éƒ½å·²å‡†å¤‡å°±ç»ªï¼Œå¯ä»¥æäº¤æœ€ç»ˆæ¯”åˆ†ã€‚',
-    opponentPending: 'ç­‰å¾…å¯¹æ‰‹',
-    bracketPending: 'ä½ çš„ç­¾ä½å·²ç»ç¡®å®šï¼Œæ­£åœ¨ç­‰å¾…ä¸Šä¸€åœºæ¯”èµ›å†³å‡ºå¯¹æ‰‹ã€‚',
+    title: 'ÏûÏ¢ÆøÅÝ',
+    subtitle: 'ËæÊ±´¦Àí±ÈÈüÏà¹Ø²Ù×÷¡£',
+    empty: 'µ±Ç°Ã»ÓÐ´ý´¦ÀíµÄ±ÈÈüÏûÏ¢¡£',
+    casual: 'ÅÅÎ»Èü',
+    tournament: 'Ö°ÒµÈü',
+    accept: '½ÓÊÜ',
+    decline: '¾Ü¾ø',
+    cancel: 'È¡Ïû',
+    ready: '×¼±¸¾ÍÐ÷',
+    submit: 'Ìá½»±È·Ö',
+    resubmit: 'ÖØÐÂÌá½»',
+    submitted: 'ÒÑÌá½»',
+    scoreEditable: 'ÄãÒÑ¾­Ìá½»¹ý±È·Ö£¬µ«ÔÚ¶ÔÊÖÈ·ÈÏÇ°ÈÔÈ»¿ÉÒÔÐÞ¸Ä¡£',
+    waitingForOpponent: 'µÈ´ý¶ÔÊÖ´¦Àí¡£',
+    waitingForReady: 'ÄãÒÑ×¼±¸¾ÍÐ÷£¬µÈ´ý¶ÔÊÖ¡£',
+    opponentSubmitted: '¶ÔÊÖÒÑ¾­Ìá½»ÁËÒ»¸ö½á¹û¡£',
+    enterScores: 'ÇëÊäÈë×îÖÕ±È·Ö£¬²»ÄÜÆ½·Ö¡£',
+    yourScore: 'Äã',
+    theirScore: '¶ÔÊÖ',
+    open: 'ÏûÏ¢',
+    challengerWaiting: 'ÒÑ·¢ÆðÌôÕ½',
+    challengerIncoming: 'ÊÕµ½ÌôÕ½',
+    tournamentReady: 'Ö°ÒµÈü¿ÉÒÔ¿ªÊ¼',
+    tournamentLive: 'Ö°ÒµÈü´ýÌá½»±È·Ö',
+    tournamentWaiting: 'Ö°ÒµÈüµÈ´ý¶ÔÊÖ',
+    scoreMismatch: 'Ë«·½Ìá½»µÄ±È·Ö²»Ò»ÖÂ£¬ÏµÍ³ÒÑÖØÖÃ¡£',
+    scoreSubmitted: '±È·ÖÒÑÌá½»£¬µÈ´ýÈ·ÈÏ¡£',
+    scoreCompleted: '½á¹ûÒÑÈ·ÈÏ¡£',
+    actionFailed: '²Ù×÷Ê§°Ü¡£',
+    tournamentReadyDone: 'ÄãÒÑ×¼±¸¾ÍÐ÷£¬µÈ´ý¶ÔÊÖ¡£',
+    tournamentReadyLive: 'Ë«·½¶¼ÒÑ×¼±¸¾ÍÐ÷£¬¿ÉÒÔÌá½»×îÖÕ±È·Ö¡£',
+    opponentPending: 'µÈ´ý¶ÔÊÖ',
+    bracketPending: 'ÄãµÄÇ©Î»ÒÑ¾­È·¶¨£¬ÕýÔÚµÈ´ýÉÏÒ»³¡±ÈÈü¾ö³ö¶ÔÊÖ¡£',
   },
 } as const;
 
@@ -187,10 +187,10 @@ const localizeLegacyMatchLabel = (language: Language, label: string) => {
   }
 
   return label
-    .replace(/^Grand Final$/, 'å†³èµ›')
-    .replace(/^Third Place Match$/, 'å­£å†›èµ›')
-    .replace(/^Semifinal (\d+)$/, 'åŠå†³èµ› $1')
-    .replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, 'èµ„æ ¼èµ› $2');
+    .replace(/^Grand Final$/, '¾öÈü')
+    .replace(/^Third Place Match$/, '¼¾¾üÈü')
+    .replace(/^Semifinal (\d+)$/, '°ë¾öÈü $1')
+    .replace(/^(Quarterfinal|Qualifier|Play-In) (\d+)$/, '×Ê¸ñÈü $2');
 };
 
 const localizeBracketSource = (language: Language, source: string | null) => {
@@ -204,12 +204,12 @@ const localizeBracketSource = (language: Language, source: string | null) => {
 
   const winnerMatch = source.match(/^Winner of (.+)$/);
   if (winnerMatch) {
-    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}èƒœè€…`;
+    return `${localizeLegacyMatchLabel(language, winnerMatch[1])}Ê¤Õß`;
   }
 
   const loserMatch = source.match(/^Loser of (.+)$/);
   if (loserMatch) {
-    return `${localizeLegacyMatchLabel(language, loserMatch[1])}è´¥è€…`;
+    return `${localizeLegacyMatchLabel(language, loserMatch[1])}°ÜÕß`;
   }
 
   return localizeLegacyMatchLabel(language, source);
@@ -217,18 +217,18 @@ const localizeBracketSource = (language: Language, source: string | null) => {
 
 const getLocalizedMatchLabel = (language: Language, match: TournamentBracketMatch) => {
   if (match.stage === 'final') {
-    return language === 'zh' ? 'å†³èµ›' : 'Grand Final';
+    return language === 'zh' ? '¾öÈü' : 'Grand Final';
   }
 
   if (match.stage === 'third_place') {
-    return language === 'zh' ? 'å­£å†›èµ›' : 'Third Place Match';
+    return language === 'zh' ? '¼¾¾üÈü' : 'Third Place Match';
   }
 
   if (match.stage === 'semifinal') {
-    return language === 'zh' ? `åŠå†³èµ› ${match.slot}` : `Semifinal ${match.slot}`;
+    return language === 'zh' ? `°ë¾öÈü ${match.slot}` : `Semifinal ${match.slot}`;
   }
 
-  return language === 'zh' ? `èµ„æ ¼èµ› ${match.slot}` : `Qualifier ${match.slot}`;
+  return language === 'zh' ? `×Ê¸ñÈü ${match.slot}` : `Qualifier ${match.slot}`;
 };
 
 const buildCasualQueueItem = (match: Match, userId: string, ui: typeof copy.en): QueueItem => {
@@ -289,7 +289,7 @@ const buildTournamentQueueItem = (
     kind: 'tournament',
     tournament,
     match,
-    title: `${tournament.name} è·¯ ${matchLabel}`,
+    title: `${tournament.name} ¡¤ ${matchLabel}`,
     subtitle,
     avatarUrl:
       opponentAvatarUrl ||
@@ -603,20 +603,20 @@ export default function GlobalMessageQueue() {
     <>
       <div
         className={clsx(
-          'fixed right-4 z-[130] md:bottom-8 md:right-8',
-          'bottom-[calc(env(safe-area-inset-bottom)+7.25rem)]',
+          'fixed right-3 z-[130] md:bottom-8 md:right-7',
+          'bottom-[calc(env(safe-area-inset-bottom)+7.75rem)]',
         )}
       >
         <button
           type="button"
           onClick={() => setOpen((current) => !current)}
           className={clsx(
-            'relative flex h-[4.35rem] w-[4.35rem] items-center justify-center overflow-hidden rounded-[1.8rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5',
+            'relative flex h-[4.05rem] w-[4.05rem] items-center justify-center overflow-hidden rounded-[1.7rem] border backdrop-blur-[36px] backdrop-saturate-150 transition-all hover:-translate-y-0.5',
             tones.shell,
           )}
         >
           <span className={clsx('pointer-events-none absolute inset-x-3 top-1 h-7 rounded-full opacity-90 blur-2xl', tones.shine)} />
-          <span className={clsx('pointer-events-none absolute inset-0 rounded-[1.8rem]', tones.glow)} />
+          <span className={clsx('pointer-events-none absolute inset-0 rounded-[1.7rem]', tones.glow)} />
           <MessageSquareMore className="relative z-10 h-6 w-6" />
         </button>
         {queueItems.length > 0 ? (
@@ -633,8 +633,8 @@ export default function GlobalMessageQueue() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             className={clsx(
-              'fixed right-4 z-[129] flex h-[min(34rem,calc(100vh-10.5rem))] w-[min(92vw,420px)] flex-col overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-8',
-              'bottom-[calc(env(safe-area-inset-bottom)+12.2rem)]',
+              'fixed right-3 z-[129] flex h-[min(34rem,calc(100vh-11rem))] w-[min(92vw,420px)] flex-col overflow-hidden rounded-[2rem] border backdrop-blur-[36px] backdrop-saturate-150 md:bottom-28 md:right-7',
+              'bottom-[calc(env(safe-area-inset-bottom)+12.6rem)]',
               tones.panel,
             )}
           >
@@ -904,6 +904,8 @@ export default function GlobalMessageQueue() {
     </>
   );
 }
+
+
 
 
 
